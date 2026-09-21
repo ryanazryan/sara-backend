@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Yarn
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Yarn cache
+.yarn/cache/
+
+# Plug'n'Play
+.pnp.*
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
