@@ -467,6 +467,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"aws-ssl-profiles@npm:^1.1.2":
+  version: 1.1.2
+  resolution: "aws-ssl-profiles@npm:1.1.2"
+  checksum: bfcf9b2cbb9788e24e4af39a1e8b4a8afbdf65773b6a1636e643c10068ffbae46b28277c4c9f9321179400b2080092db040ba4513f9143f22d1bb053a12dab2b
+  languageName: node
+  linkType: hard
+
 "body-parser@npm:^2.2.1":
   version: 2.3.0
   resolution: "body-parser@npm:2.3.0"
@@ -858,6 +865,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"generate-function@npm:^2.3.1":
+  version: 2.3.1
+  resolution: "generate-function@npm:2.3.1"
+  dependencies:
+    is-property: ^1.0.2
+  checksum: 652f083de206ead2bae4caf9c7eeb465e8d98c0b8ed2a29c6afc538cef0785b5c6eea10548f1e13cc586d3afd796c13c830c2cb3dc612ec2457b2aadda5f57c9
+  languageName: node
+  linkType: hard
+
 "generator-function@npm:^2.0.0":
   version: 2.0.1
   resolution: "generator-function@npm:2.0.1"
@@ -939,7 +955,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"iconv-lite@npm:^0.7.2, iconv-lite@npm:~0.7.0":
+"iconv-lite@npm:^0.7.2, iconv-lite@npm:^0.7.3, iconv-lite@npm:~0.7.0":
   version: 0.7.3
   resolution: "iconv-lite@npm:0.7.3"
   dependencies:
@@ -969,10 +985,31 @@ __metadata:
   languageName: node
   linkType: hard
 
+"is-property@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "is-property@npm:1.0.2"
+  checksum: 33b661a3690bcc88f7e47bb0a21b9e3187e76a317541ea7ec5e8096d954f441b77a46d8930c785f7fbf4ef8dfd624c25495221e026e50f74c9048fe501773be5
+  languageName: node
+  linkType: hard
+
 "isexe@npm:^4.0.0":
   version: 4.0.0
   resolution: "isexe@npm:4.0.0"
   checksum: 2ead327ef596042ef9c9ec5f236b316acfaedb87f4bb61b3c3d574fb2e9c8a04b67305e04733bde52c24d9622fdebd3270aadb632adfbf9cadef88fe30f479e5
+  languageName: node
+  linkType: hard
+
+"long@npm:^5.3.2":
+  version: 5.3.2
+  resolution: "long@npm:5.3.2"
+  checksum: be215816b563f4ca27ad3677678b53415bc489f9e3466414e54d2d85f5f8e86768547fa58493bacfb363ffc57a664debc83403ccc2178aef0c40aca28bad47c9
+  languageName: node
+  linkType: hard
+
+"lru.min@npm:^1.1.0, lru.min@npm:^1.1.4":
+  version: 1.1.5
+  resolution: "lru.min@npm:1.1.5"
+  checksum: cefda55adcc0b0b8e9ce75f97712e83e68b499b93ef837cf9e23251a59aced8345a795841c036e1ff64c37545abb3de4d661793df7bad1908e88035a96338e69
   languageName: node
   linkType: hard
 
@@ -1033,6 +1070,32 @@ __metadata:
   version: 2.1.3
   resolution: "ms@npm:2.1.3"
   checksum: aa92de608021b242401676e35cfa5aa42dd70cbdc082b916da7fb925c542173e36bce97ea3e804923fe92c0ad991434e4a38327e15a1b5b5f945d66df615ae6d
+  languageName: node
+  linkType: hard
+
+"mysql2@npm:^3.24.4":
+  version: 3.24.4
+  resolution: "mysql2@npm:3.24.4"
+  dependencies:
+    aws-ssl-profiles: ^1.1.2
+    generate-function: ^2.3.1
+    iconv-lite: ^0.7.3
+    long: ^5.3.2
+    lru.min: ^1.1.4
+    named-placeholders: ^1.1.6
+    sql-escaper: ^1.5.1
+  peerDependencies:
+    "@types/node": ">= 8"
+  checksum: 6fda65818094e33eb0569cadd7a54afcab4c9dda7133406abd12c155ea03b568a5d167721edb272d0d45acdc7eadf56a3320cd49acfd5eb6a62098ec3eb99c64
+  languageName: node
+  linkType: hard
+
+"named-placeholders@npm:^1.1.6":
+  version: 1.1.6
+  resolution: "named-placeholders@npm:1.1.6"
+  dependencies:
+    lru.min: ^1.1.0
+  checksum: 959d44f2a00e87baa2c2b2d43c2be76c6e841a0ed67af4bf4a8d91c54082e2b2db9ac8461b16db413dcb133c6f34669516d755f9a1a7956851ce81196a717f65
   languageName: node
   linkType: hard
 
@@ -1214,6 +1277,7 @@ __metadata:
     cors: ^2.8.6
     dotenv: ^18.0.1
     express: ^5.2.1
+    mysql2: ^3.24.4
     prettier: ^3.9.9
     tsx: ^4.23.15
     typescript: ^7.0.2
@@ -1312,6 +1376,13 @@ __metadata:
     side-channel-map: ^1.0.1
     side-channel-weakmap: ^1.0.2
   checksum: e0f217140c463636ee556260bbc8f47ba2931f1248826f58e1502704135814c763b325dd9ab122a04176aa45b4a4f8cc556415bcab7a0179d85250fb7812f063
+  languageName: node
+  linkType: hard
+
+"sql-escaper@npm:^1.5.1":
+  version: 1.5.2
+  resolution: "sql-escaper@npm:1.5.2"
+  checksum: 09911a0f2171749767ce8261f53346192d987eb59f7eee33a8edabf66f79b28af74d0f58a9eb9448743ed580e98897b044f320d6410f9bd09d3e0d81c97826a6
   languageName: node
   linkType: hard
 

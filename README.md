@@ -1,3 +1,4 @@
+````md
 # SARA Backend
 
 Backend service untuk **SARA — Smart Assistant for Responsive Automation**.
@@ -15,7 +16,7 @@ Backend ini dikembangkan menggunakan Node.js, Express.js, dan TypeScript untuk m
 | Programming Language | TypeScript 7.0.2 |
 | Development Runner   | tsx 4.23.15      |
 | Package Manager      | Yarn 3.6.3       |
-| Database             | MySQL            |
+| Database             | MySQL 8.0        |
 | API Style            | REST API         |
 
 ---
@@ -27,6 +28,7 @@ Backend ini dikembangkan menggunakan Node.js, Express.js, dan TypeScript untuk m
 - `express`
 - `cors`
 - `dotenv`
+- `mysql2`
 
 ### Development Dependencies
 
@@ -35,6 +37,7 @@ Backend ini dikembangkan menggunakan Node.js, Express.js, dan TypeScript untuk m
 - `@types/node`
 - `@types/express`
 - `@types/cors`
+- `prettier`
 
 Versi dependency mengikuti konfigurasi pada `package.json` dan `yarn.lock`.
 
@@ -47,7 +50,7 @@ Pastikan environment berikut sudah tersedia sebelum menjalankan project:
 - Node.js 22.x
 - Yarn 3.x
 - Git
-- MySQL
+- MySQL 8.0.x
 
 Cek versi:
 
@@ -55,23 +58,27 @@ Cek versi:
 node -v
 yarn -v
 git --version
-```
+mysql --version
+````
 
 Environment development yang digunakan:
 
 ```text
 Node.js 22.21.1
 Yarn 3.6.3
+MySQL 8.0.30
 ```
 
 ---
 
 ## Installation
 
-Clone repository:
+### Clone Repository
+
+Clone repository backend SARA:
 
 ```bash
-git clone https://github.com/[USERNAME]/sara-backend.git
+git clone https://github.com/ryanazryan/sara-backend.git
 ```
 
 Masuk ke directory project:
@@ -80,10 +87,106 @@ Masuk ke directory project:
 cd sara-backend
 ```
 
-Install dependencies:
+### Install Dependencies
+
+Install seluruh dependency menggunakan Yarn:
 
 ```bash
 yarn install
+```
+
+---
+
+## Database Setup
+
+SARA Backend menggunakan **MySQL** sebagai DBMS utama.
+
+### 1. Pastikan MySQL Aktif
+
+Pastikan MySQL Server sedang berjalan.
+
+Konfigurasi default yang digunakan oleh project:
+
+```text
+Host     : localhost
+Port     : 3306
+Username : root
+Database : sara
+```
+
+### 2. Cek Instalasi MySQL
+
+Jalankan:
+
+```bash
+mysql --version
+```
+
+Contoh output:
+
+```text
+C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin\mysql.exe
+Ver 8.0.30 for Win64
+```
+
+### 3. Login ke MySQL
+
+Jalankan:
+
+```bash
+mysql -u root -p
+```
+
+Masukkan password MySQL.
+
+Apabila user `root` tidak menggunakan password, tekan `Enter` ketika diminta password.
+
+### 4. Membuat Database SARA
+
+Setelah berhasil masuk ke MySQL, buat database:
+
+```sql
+CREATE DATABASE sara
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+```
+
+Verifikasi database:
+
+```sql
+SHOW DATABASES;
+```
+
+Pastikan database berikut tersedia:
+
+```text
+sara
+```
+
+### 5. Menggunakan Database SARA
+
+```sql
+USE sara;
+```
+
+Untuk memastikan database yang sedang digunakan:
+
+```sql
+SELECT DATABASE();
+```
+
+Expected result:
+
+```text
+sara
+```
+
+### 6. Keluar dari MySQL
+
+Setelah konfigurasi database selesai:
+
+```sql
+exit;
 ```
 
 ---
@@ -115,7 +218,43 @@ Keterangan:
 | `DB_USER`     | Username MySQL                   |
 | `DB_PASSWORD` | Password MySQL                   |
 
+Sesuaikan `DB_USER` dan `DB_PASSWORD` dengan konfigurasi MySQL pada environment masing-masing.
+
 > Jangan commit file `.env` ke repository. Gunakan `.env.example` sebagai template konfigurasi environment.
+
+---
+
+## Database Connection Check
+
+Project menyediakan command khusus untuk melakukan pengecekan koneksi antara backend dan MySQL.
+
+Jalankan:
+
+```bash
+yarn db:check
+```
+
+Jika koneksi berhasil, output akan menunjukkan:
+
+```text
+MySQL connection successful
+[ { result: 1 } ]
+```
+
+Proses pengecekan:
+
+```text
+SARA Backend
+      │
+      ▼
+Node.js + mysql2
+      │
+      ▼
+MySQL Server
+      │
+      ▼
+Database "sara"
+```
 
 ---
 
@@ -167,6 +306,26 @@ yarn typecheck
 
 ---
 
+## Code Formatting
+
+Project menggunakan **Prettier** untuk menjaga konsistensi formatting kode.
+
+### Format Source Code
+
+```bash
+yarn format
+```
+
+### Check Formatting
+
+```bash
+yarn format:check
+```
+
+> `yarn format:check` digunakan sebagai validasi formatting dan tidak mengubah file.
+
+---
+
 ## API Health Check
 
 Backend menyediakan endpoint untuk mengecek apakah service berjalan dengan baik.
@@ -196,12 +355,15 @@ Response:
 
 ## Development Scripts
 
-| Command          | Keterangan                                       |
-| ---------------- | ------------------------------------------------ |
-| `yarn dev`       | Menjalankan development server dengan watch mode |
-| `yarn build`     | Melakukan compile TypeScript                     |
-| `yarn start`     | Menjalankan hasil build                          |
-| `yarn typecheck` | Melakukan pengecekan TypeScript                  |
+| Command             | Keterangan                                       |
+| ------------------- | ------------------------------------------------ |
+| `yarn dev`          | Menjalankan development server dengan watch mode |
+| `yarn build`        | Melakukan compile TypeScript                     |
+| `yarn start`        | Menjalankan hasil build                          |
+| `yarn typecheck`    | Melakukan pengecekan TypeScript                  |
+| `yarn db:check`     | Mengecek koneksi backend ke MySQL                |
+| `yarn format`       | Memformat file menggunakan Prettier              |
+| `yarn format:check` | Mengecek format file menggunakan Prettier        |
 
 ---
 
@@ -209,6 +371,7 @@ Response:
 
 ```mermaid
 flowchart TD
+
     A["React Native + TypeScript<br/>Mobile Application"]
     B["HTTPS / REST API"]
     C["Node.js + Express.js + TypeScript<br/>Backend"]
@@ -227,14 +390,14 @@ flowchart TD
 
 Backend SARA dirancang untuk menangani:
 
-- Authentication
-- Activity Management
-- Schedule Management
-- Activity History
-- Reminder
-- Notification Processing
-- Recommendation
-- AI/NLP Integration
+* Authentication
+* Activity Management
+* Schedule Management
+* Activity History
+* Reminder
+* Notification Processing
+* Recommendation
+* AI/NLP Integration
 
 ---
 
@@ -242,14 +405,25 @@ Backend SARA dirancang untuk menangani:
 
 ```mermaid
 flowchart TD
+
     A["sara-backend"]
 
     A --> B["src/"]
 
     B --> C["config/"]
+    C --> C1["database.ts"]
+    C --> C2["database-check.ts"]
+
     B --> D["controllers/"]
+    D --> D1["health.controller.ts"]
+
     B --> E["middlewares/"]
+    E --> E1["error.middleware.ts"]
+
     B --> F["routes/"]
+    F --> F1["health.routes.ts"]
+    F --> F2["index.ts"]
+
     B --> G["services/"]
     B --> H["models/"]
     B --> I["app.ts"]
@@ -267,19 +441,121 @@ flowchart TD
 
 ---
 
+## Backend Layer
+
+Struktur backend menggunakan pemisahan tanggung jawab berdasarkan layer.
+
+### Config
+
+Directory:
+
+```text
+src/config/
+```
+
+Digunakan untuk konfigurasi aplikasi, termasuk koneksi database.
+
+File utama:
+
+```text
+database.ts
+```
+
+Berfungsi membuat MySQL connection pool menggunakan `mysql2`.
+
+File pengecekan:
+
+```text
+database-check.ts
+```
+
+Digunakan untuk melakukan validasi koneksi backend ke database MySQL.
+
+### Controllers
+
+Directory:
+
+```text
+src/controllers/
+```
+
+Digunakan untuk menangani HTTP request dan memberikan HTTP response.
+
+Contoh:
+
+```text
+health.controller.ts
+```
+
+### Routes
+
+Directory:
+
+```text
+src/routes/
+```
+
+Digunakan untuk mendefinisikan endpoint API dan menghubungkan route dengan controller.
+
+Contoh:
+
+```text
+health.routes.ts
+```
+
+### Middlewares
+
+Directory:
+
+```text
+src/middlewares/
+```
+
+Digunakan untuk middleware yang berjalan pada request pipeline.
+
+Contoh:
+
+```text
+error.middleware.ts
+```
+
+### Services
+
+Directory:
+
+```text
+src/services/
+```
+
+Disiapkan untuk business logic aplikasi.
+
+### Models
+
+Directory:
+
+```text
+src/models/
+```
+
+Disiapkan untuk representasi data dan integrasi model aplikasi.
+
+---
+
 ## Version Control
 
 Project menggunakan:
 
-- Git
-- GitHub
-- Trunk-Based Development
+* Git
+* GitHub
+* Trunk-Based Development
 
 ### Branch Utama
 
 ```text
 main
 ```
+
+Branch `main` digunakan sebagai central integration branch.
 
 ### Short-Lived Branch
 
@@ -289,10 +565,21 @@ fix/*
 chore/*
 ```
 
+Contoh:
+
+```text
+feature/mysql-setup
+feature/authentication
+feature/activity-api
+fix/database-connection
+chore/update-dependencies
+```
+
 ### Alur Development
 
 ```mermaid
 flowchart LR
+
     A["Create Branch"] --> B["Development"]
     B --> C["Commit"]
     C --> D["Pull Request"]
@@ -325,7 +612,7 @@ React Native + TypeScript
 Repository untuk backend service SARA:
 
 ```text
-https://github.com/[USERNAME]/sara-backend
+https://github.com/ryanazryan/sara-backend
 ```
 
 Technology:
@@ -354,6 +641,7 @@ Tahapan pengembangan:
 
 ```mermaid
 flowchart LR
+
     A["Project Setup"]
     B["Database Setup"]
     C["Backend API"]
@@ -365,8 +653,97 @@ flowchart LR
     A --> B --> C --> D --> E --> F --> G
 ```
 
+Status backend saat ini:
+
+```text
+Backend Repository Setup     → Completed
+Backend API Foundation       → Completed
+MySQL Setup                  → In Progress
+Database Schema              → Planned
+```
+
+---
+
+## Current Backend Foundation
+
+Backend foundation saat ini menyediakan:
+
+```text
+Express.js Application
+        │
+        ├── CORS
+        ├── JSON Request Parser
+        ├── REST API Routes
+        ├── Error Middleware
+        └── Health Check
+```
+
+Database foundation menyediakan:
+
+```text
+MySQL 8.0
+    │
+    └── Database: sara
+            │
+            └── mysql2 Connection Pool
+```
+
+---
+
+## Next Development Phase
+
+Setelah MySQL setup selesai dan tervalidasi, tahap berikutnya adalah implementasi database schema.
+
+Development flow berikutnya:
+
+```mermaid
+flowchart LR
+
+    A["MySQL Setup"]
+    B["Database Schema Implementation"]
+    C["Seed / Sample Data"]
+    D["Docker Setup"]
+    E["Authentication Backend"]
+    F["Authentication Integration"]
+    G["Core Application Features"]
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> G
+```
+
+Database schema akan dikembangkan berdasarkan requirement, use case, class/data model, dan kebutuhan fitur SARA.
+
+---
+
+## Validation Checklist
+
+Sebelum membuat Pull Request, lakukan validation berikut:
+
+```bash
+yarn typecheck
+yarn build
+yarn db:check
+yarn format:check
+```
+
+Expected validation:
+
+```text
+TypeScript typecheck       → Passed
+Production build           → Passed
+MySQL connection check     → Passed
+Prettier format check      → Passed
+```
+
 ---
 
 ## License
 
 Project ini dibuat untuk keperluan **Tugas Besar / perkuliahan Implementasi dan Pengujian Perangkat Lunak**.
+
+```
+```
