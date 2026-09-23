@@ -8,15 +8,15 @@ Backend ini dikembangkan menggunakan Node.js, Express.js, dan TypeScript untuk m
 
 ## Tech Stack
 
-| Komponen | Teknologi |
-|---|---|
-| Runtime | Node.js 22.21.1 |
-| Backend Framework | Express.js |
+| Komponen             | Teknologi        |
+| -------------------- | ---------------- |
+| Runtime              | Node.js 22.21.1  |
+| Backend Framework    | Express.js       |
 | Programming Language | TypeScript 7.0.2 |
-| Development Runner | tsx 4.23.15 |
-| Package Manager | Yarn 3.6.3 |
-| Database | MySQL |
-| API Style | REST API |
+| Development Runner   | tsx 4.23.15      |
+| Package Manager      | Yarn 3.6.3       |
+| Database             | MySQL            |
+| API Style            | REST API         |
 
 ---
 
@@ -106,14 +106,14 @@ DB_PASSWORD=
 
 Keterangan:
 
-| Variable | Keterangan |
-|---|---|
-| `PORT` | Port yang digunakan oleh backend |
-| `DB_HOST` | Host MySQL |
-| `DB_PORT` | Port MySQL |
-| `DB_NAME` | Nama database |
-| `DB_USER` | Username MySQL |
-| `DB_PASSWORD` | Password MySQL |
+| Variable      | Keterangan                       |
+| ------------- | -------------------------------- |
+| `PORT`        | Port yang digunakan oleh backend |
+| `DB_HOST`     | Host MySQL                       |
+| `DB_PORT`     | Port MySQL                       |
+| `DB_NAME`     | Nama database                    |
+| `DB_USER`     | Username MySQL                   |
+| `DB_PASSWORD` | Password MySQL                   |
 
 > Jangan commit file `.env` ke repository. Gunakan `.env.example` sebagai template konfigurasi environment.
 
@@ -196,12 +196,12 @@ Response:
 
 ## Development Scripts
 
-| Command | Keterangan |
-|---|---|
-| `yarn dev` | Menjalankan development server dengan watch mode |
-| `yarn build` | Melakukan compile TypeScript |
-| `yarn start` | Menjalankan hasil build |
-| `yarn typecheck` | Melakukan pengecekan TypeScript |
+| Command          | Keterangan                                       |
+| ---------------- | ------------------------------------------------ |
+| `yarn dev`       | Menjalankan development server dengan watch mode |
+| `yarn build`     | Melakukan compile TypeScript                     |
+| `yarn start`     | Menjalankan hasil build                          |
+| `yarn typecheck` | Melakukan pengecekan TypeScript                  |
 
 ---
 
