@@ -1,0 +1,2 @@
+ALTER TABLE Pengguna
+  ADD COLUMN emailVerifiedAt DATETIME NULL;

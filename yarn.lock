@@ -196,6 +196,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@stablelib/base64@npm:^1.0.0":
+  version: 1.0.1
+  resolution: "@stablelib/base64@npm:1.0.1"
+  checksum: 3ef4466d1d6889ac3fc67407bc21aa079953981c322eeca3b29f426d05506c63011faab1bfc042d7406e0677a94de6c9d2db2ce079afdd1eccae90031bfb5859
+  languageName: node
+  linkType: hard
+
 "@types/body-parser@npm:*":
   version: 1.19.6
   resolution: "@types/body-parser@npm:1.19.6"
@@ -763,6 +770,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"express-rate-limit@npm:^8.7.4":
+  version: 8.7.4
+  resolution: "express-rate-limit@npm:8.7.4"
+  dependencies:
+    debug: ^4.4.3
+    ip-address: ^10.2.0
+  peerDependencies:
+    express: ">= 4.11"
+  checksum: c01d983316324bf31ce69d9bb9ae419f4ec54f0f86db46b84de15e1c8927f65e0c13051cc7c2c7856a86050eb351e7db817fe763f9b7abbea3fb22e3958f4b3c
+  languageName: node
+  linkType: hard
+
 "express@npm:^5.2.1":
   version: 5.2.1
   resolution: "express@npm:5.2.1"
@@ -796,6 +815,13 @@ __metadata:
     type-is: ^2.0.1
     vary: ^1.1.2
   checksum: e0bc9c11fcf4e6ed29c9b0551229e8cf35d959970eb5e10ef3e48763eb3a63487251950d9bf4ef38b93085f0f33bb1fc37ab07349b8fa98a0fa5f67236d4c054
+  languageName: node
+  linkType: hard
+
+"fast-sha256@npm:^1.3.0":
+  version: 1.3.0
+  resolution: "fast-sha256@npm:1.3.0"
+  checksum: 2b0bea7d3a9955e67abd2d3fbef4ce57f7dbb75708fc206d14973bd1d97aaf35b5c0a59c1d65be6f755df43d73b7657b9eac4fb3c2d58e6849966db1ef1fa186
   languageName: node
   linkType: hard
 
@@ -971,6 +997,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"ip-address@npm:^10.2.0":
+  version: 10.7.6
+  resolution: "ip-address@npm:10.7.6"
+  checksum: 9b60cc705143e0c68be894c5f31e6450fc8f4ca61f35a83070ecd7a6e79847ad4bd7d3e332a659de65f885e3b8b670315a65b539d268fb3089afce3a3387dd6f
+  languageName: node
+  linkType: hard
+
 "ipaddr.js@npm:1.9.1":
   version: 1.9.1
   resolution: "ipaddr.js@npm:1.9.1"
@@ -996,6 +1029,13 @@ __metadata:
   version: 4.0.0
   resolution: "isexe@npm:4.0.0"
   checksum: 2ead327ef596042ef9c9ec5f236b316acfaedb87f4bb61b3c3d574fb2e9c8a04b67305e04733bde52c24d9622fdebd3270aadb632adfbf9cadef88fe30f479e5
+  languageName: node
+  linkType: hard
+
+"jose@npm:^6.2.17":
+  version: 6.2.17
+  resolution: "jose@npm:6.2.17"
+  checksum: 796f1d9743823b278407026c9496a039f298684cac442f24f65c01b06f11f2496b3b549df2727a2ac82fe78552fb7524a5fda68b7b08bd26f2071b2a60828fa7
   languageName: node
   linkType: hard
 
@@ -1192,6 +1232,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"postal-mime@npm:2.7.6":
+  version: 2.7.6
+  resolution: "postal-mime@npm:2.7.6"
+  checksum: b7d9f8f425dd676c0c8e09087c58c8e79a9e6c4df3c1868434171c43ea8fbfe0d6b117f9d2973d14235c5e285d1f402d3fc509d0905bc1acc1ff28383d914c97
+  languageName: node
+  linkType: hard
+
 "prettier@npm:^3.9.9":
   version: 3.9.9
   resolution: "prettier@npm:3.9.9"
@@ -1247,6 +1294,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"resend@npm:^6.37.0":
+  version: 6.37.0
+  resolution: "resend@npm:6.37.0"
+  dependencies:
+    postal-mime: 2.7.6
+    standardwebhooks: 1.1.1
+  peerDependencies:
+    "@react-email/render": "*"
+  peerDependenciesMeta:
+    "@react-email/render":
+      optional: true
+  checksum: 21ffc042c2db011cbc0ac2c33715fb628d29eec58ded7b4a28541fd6d8776869c8b268c00f7fbff670b730c2f260050aa4cb6b8e2adad653e143c9fec9597d4b
+  languageName: node
+  linkType: hard
+
 "router@npm:^2.2.0":
   version: 2.2.0
   resolution: "router@npm:2.2.0"
@@ -1277,8 +1339,11 @@ __metadata:
     cors: ^2.8.6
     dotenv: ^18.0.1
     express: ^5.2.1
+    express-rate-limit: ^8.7.4
+    jose: ^6.2.17
     mysql2: ^3.24.4
     prettier: ^3.9.9
+    resend: ^6.37.0
     tsx: ^4.23.15
     typescript: ^7.0.2
   languageName: unknown
@@ -1383,6 +1448,16 @@ __metadata:
   version: 1.5.2
   resolution: "sql-escaper@npm:1.5.2"
   checksum: 09911a0f2171749767ce8261f53346192d987eb59f7eee33a8edabf66f79b28af74d0f58a9eb9448743ed580e98897b044f320d6410f9bd09d3e0d81c97826a6
+  languageName: node
+  linkType: hard
+
+"standardwebhooks@npm:1.1.1":
+  version: 1.1.1
+  resolution: "standardwebhooks@npm:1.1.1"
+  dependencies:
+    "@stablelib/base64": ^1.0.0
+    fast-sha256: ^1.3.0
+  checksum: 80737c89accc42a501c0456e3313c6eaa19c901cf41ee68bdf0d10644f0c57d344e0c14560d0a65984e878d18e9b00466908f4f1323e54f0403e1dcf6120f08e
   languageName: node
   linkType: hard
 
