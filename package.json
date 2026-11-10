@@ -8,7 +8,10 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "db:check": "tsx src/config/database-check.ts"
+    "db:check": "tsx src/config/database-check.ts",
+    "db:migrate": "tsx src/db/migrate.ts up",
+    "db:migrate:status": "tsx src/db/migrate.ts status",
+    "test:db-migrations": "tsx --test tests/migrations.test.ts"
   },
   "dependencies": {
     "cors": "^2.8.6",
