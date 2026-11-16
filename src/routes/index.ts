@@ -6,6 +6,8 @@ import aktivitasRoutes from "./aktivitas.routes.js";
 import scheduleRoutes from "./schedule.routes.js";
 import historyRoutes from "./history.routes.js";
 import reminderRoutes from "./reminder.routes.js";
+import deviceRoutes from "./device.routes.js";
+import notificationRoutes from "./notification.routes.js";
 
 const router = Router();
 
@@ -16,5 +18,7 @@ router.use("/api/aktivitas", aktivitasRoutes);
 router.use("/api/schedule", scheduleRoutes);
 router.use("/api/history", historyRoutes);
 router.use("/api/reminders", reminderRoutes);
+router.use("/api/devices", deviceRoutes);
+router.use("/api/notifications", notificationRoutes);
 
 export default router;
