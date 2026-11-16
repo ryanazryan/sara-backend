@@ -1,0 +1,10 @@
+import { Router } from "express";
+import { requireAuth } from "../middlewares/auth.middleware.js";
+import { listDevices, registerDevice, unregisterDevice, updateDevice } from "../controllers/device.controller.js";
+const router = Router();
+router.use(requireAuth);
+router.get("/", listDevices);
+router.post("/", registerDevice);
+router.patch("/:id", updateDevice);
+router.delete("/:id", unregisterDevice);
+export default router;
