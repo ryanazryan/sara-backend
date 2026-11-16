@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middlewares/auth.middleware.js";
+import { historyByActivity, setAktivitasStatus } from "../controllers/schedule-history.controller.js";
 import {
   createAktivitas,
   deleteAktivitas,
@@ -12,6 +13,8 @@ const router = Router();
 router.use(requireAuth);
 router.get("/", listAktivitas);
 router.post("/", createAktivitas);
+router.get("/:id/history", historyByActivity);
+router.post("/:id/status", setAktivitasStatus);
 router.get("/:id", readAktivitas);
 router.patch("/:id", updateAktivitas);
 router.delete("/:id", deleteAktivitas);
