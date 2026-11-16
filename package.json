@@ -11,6 +11,8 @@
     "db:check": "tsx src/config/database-check.ts",
     "db:migrate": "tsx src/db/migrate.ts up",
     "db:migrate:status": "tsx src/db/migrate.ts status",
+    "reminders:run": "tsx src/workers/reminder.worker.ts once",
+    "reminders:worker": "tsx src/workers/reminder.worker.ts loop",
     "test:db-migrations": "tsx --test tests/migrations.test.ts"
   },
   "dependencies": {
