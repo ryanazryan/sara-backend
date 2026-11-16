@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { createReminder, listActivityReminders } from "../controllers/reminder.controller.js";
 import { requireAuth } from "../middlewares/auth.middleware.js";
 import { historyByActivity, setAktivitasStatus } from "../controllers/schedule-history.controller.js";
 import {
@@ -14,6 +15,8 @@ router.use(requireAuth);
 router.get("/", listAktivitas);
 router.post("/", createAktivitas);
 router.get("/:id/history", historyByActivity);
+router.get("/:id/reminders", listActivityReminders);
+router.post("/:id/reminders", createReminder);
 router.post("/:id/status", setAktivitasStatus);
 router.get("/:id", readAktivitas);
 router.patch("/:id", updateAktivitas);

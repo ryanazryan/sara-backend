@@ -5,6 +5,7 @@ import kegiatanRoutes from "./kegiatan.routes.js";
 import aktivitasRoutes from "./aktivitas.routes.js";
 import scheduleRoutes from "./schedule.routes.js";
 import historyRoutes from "./history.routes.js";
+import reminderRoutes from "./reminder.routes.js";
 
 const router = Router();
 
@@ -14,5 +15,6 @@ router.use("/api/kegiatan", kegiatanRoutes);
 router.use("/api/aktivitas", aktivitasRoutes);
 router.use("/api/schedule", scheduleRoutes);
 router.use("/api/history", historyRoutes);
+router.use("/api/reminders", reminderRoutes);
 
 export default router;
