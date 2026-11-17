@@ -1,348 +1,126 @@
-````md
+<div align="center">
+
 # SARA Backend
 
-Backend service untuk **SARA — Smart Assistant for Responsive Automation**.
+**Smart Assistant for Responsive Automation**
 
-Backend ini dikembangkan menggunakan Node.js, Express.js, dan TypeScript untuk menyediakan REST API yang digunakan oleh mobile application SARA.
+REST API untuk aktivitas, jadwal, reminder, dan notifikasi pada aplikasi SARA.
+
+[![Node.js](https://img.shields.io/badge/Node.js-22%20%2F%2024-2D6A4F?style=flat-square)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6?style=flat-square)](https://www.typescriptlang.org/)
+[![Express](https://img.shields.io/badge/Express-5-343A40?style=flat-square)](https://expressjs.com/)
+[![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?style=flat-square)](https://www.mysql.com/)
+[![Yarn](https://img.shields.io/badge/Yarn-3.6.3-2C8EBB?style=flat-square)](https://yarnpkg.com/)
+
+**[Quick Start](#quick-start) · [API Reference](#api-reference) · [Postman Testing](#postman--frontend-testing) · [Architecture](#architecture) · [Mobile](https://github.com/willysuyanto/sara-mobile)**
+
+</div>
 
 ---
+
+## Overview
+
+**SARA** merupakan *smart productivity assistant* untuk membantu pengguna mengelola kegiatan dan aktivitas sehari-hari. Repository ini menangani **REST API, autentikasi, persistensi MySQL, penjadwalan, pengingat, dan pemrosesan notifikasi**. Aplikasi mobile React Native dikerjakan pada repository terpisah.
+
+| Modul | Implementasi pada `main` setelah PR #10 |
+| :-- | :-- |
+| Authentication | Register, email OTP, resend OTP, login JWT, profil pengguna |
+| Kegiatan & Aktivitas | CRUD dengan validasi dan pembatasan kepemilikan JWT |
+| Schedule | Agenda berdasarkan rentang waktu dan deteksi benturan |
+| Activity History | Audit create, update, delete melalui MySQL triggers |
+| Reminder Engine | Reminder CRUD dan worker untuk status `PENDING / DUE / CANCELLED / EXPIRED` |
+| Notification | Device registration, delivery outbox, retry, FCM HTTP v1 adapter |
+| NLP / Smart Assistance | **Belum tersedia di `main`** |
+
+> **Status pengujian:** Pengujian Notification Service memakai provider `mock`. Pengiriman FCM nyata serta end-to-end React Native memerlukan konfigurasi dan pengujian tambahan. `ACCEPTED` berarti FCM menerima request, bukan bukti notifikasi sudah tampil di perangkat.
 
 ## Tech Stack
 
-| Komponen             | Teknologi        |
-| -------------------- | ---------------- |
-| Runtime              | Node.js 22.21.1  |
-| Backend Framework    | Express.js       |
-| Programming Language | TypeScript 7.0.2 |
-| Development Runner   | tsx 4.23.15      |
-| Package Manager      | Yarn 3.6.3       |
-| Database             | MySQL 8.0        |
-| API Style            | REST API         |
+| Komponen | Teknologi |
+| :-- | :-- |
+| Runtime & API | Node.js, Express 5, TypeScript |
+| Package manager | Yarn 3.6.3 |
+| Database | MySQL 8.0, `mysql2` |
+| Auth & Security | JWT (`jose`), `scrypt`, validation, rate limiting |
+| Email verification | Resend OTP |
+| Notifications | FCM HTTP v1 / mock adapter |
+| Developer tooling | `tsx`, Prettier, Node test runner |
+| Database migrations | Versioned SQL + checksum |
 
----
+## Quick Start
 
-## Dependencies
+### 1. Prasyarat
 
-### Production Dependencies
-
-- `express`
-- `cors`
-- `dotenv`
-- `mysql2`
-
-### Development Dependencies
-
-- `typescript`
-- `tsx`
-- `@types/node`
-- `@types/express`
-- `@types/cors`
-- `prettier`
-
-Versi dependency mengikuti konfigurasi pada `package.json` dan `yarn.lock`.
-
----
-
-## Requirements
-
-Pastikan environment berikut sudah tersedia sebelum menjalankan project:
-
-- Node.js 22.x
-- Yarn 3.x
-- Git
-- MySQL 8.0.x
-
-Cek versi:
+Node.js 22 atau 24, Corepack, MySQL 8.0, dan Git. Tim menggunakan Laragon pada lingkungan Windows.
 
 ```bash
-node -v
-yarn -v
-git --version
+node --version
+corepack --version
 mysql --version
-````
-
-Environment development yang digunakan:
-
-```text
-Node.js 22.21.1
-Yarn 3.6.3
-MySQL 8.0.30
 ```
 
----
-
-## Installation
-
-### Clone Repository
-
-Clone repository backend SARA:
+### 2. Clone & install
 
 ```bash
 git clone https://github.com/ryanazryan/sara-backend.git
-```
-
-Masuk ke directory project:
-
-```bash
 cd sara-backend
-```
-
-### Install Dependencies
-
-Install seluruh dependency menggunakan Yarn:
-
-```bash
+corepack enable
 yarn install
 ```
 
----
+### 3. Environment
 
-## Database Setup
-
-SARA Backend menggunakan **MySQL** sebagai DBMS utama.
-
-### 1. Pastikan MySQL Aktif
-
-Pastikan MySQL Server sedang berjalan.
-
-Konfigurasi default yang digunakan oleh project:
-
-```text
-Host     : localhost
-Port     : 3306
-Username : root
-Database : sara
-```
-
-### 2. Cek Instalasi MySQL
-
-Jalankan:
+Buat `.env` dari template dan isi sesuai komputer:
 
 ```bash
-mysql --version
+cp .env.example .env
 ```
 
-Contoh output:
+| Variabel | Keterangan |
+| :-- | :-- |
+| `PORT` | Port API, default `3000` |
+| `DB_HOST`, `DB_PORT`, `DB_NAME` | Koneksi MySQL |
+| `DB_USER`, `DB_PASSWORD` | Kredensial MySQL |
+| `JWT_SECRET`, `OTP_PEPPER` | Secret independen, masing-masing minimal 32 byte |
+| `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | Resend untuk email verifikasi |
+| `NOTIFICATION_PROVIDER` | `mock` untuk lokal, `fcm` untuk provider nyata |
+| `FCM_SERVICE_ACCOUNT_FILE` | Path absolut service account di luar Git repo |
+| `NOTIFICATION_POLL_MS`, `REMINDER_POLL_MS` | Interval polling worker (default 10.000 ms) |
 
-```text
-C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin\mysql.exe
-Ver 8.0.30 for Win64
-```
+Jangan commit `.env`, password, JWT, FCM device token, atau Firebase service-account JSON. Sender `onboarding@resend.dev` mempunyai batas pengiriman; verifikasi email pengguna umum memerlukan sender domain yang sesuai.
 
-### 3. Login ke MySQL
+### 4. Database MySQL
 
-Jalankan:
-
-```bash
-mysql -u root -p
-```
-
-Masukkan password MySQL.
-
-Apabila user `root` tidak menggunakan password, tekan `Enter` ketika diminta password.
-
-### 4. Membuat Database SARA
-
-Setelah berhasil masuk ke MySQL, buat database:
+Buat database development menggunakan MySQL client:
 
 ```sql
-CREATE DATABASE sara
-CHARACTER SET utf8mb4
-COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS sara
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
 ```
 
-Verifikasi database:
-
-```sql
-SHOW DATABASES;
-```
-
-Pastikan database berikut tersedia:
-
-```text
-sara
-```
-
-### 5. Menggunakan Database SARA
-
-```sql
-USE sara;
-```
-
-Untuk memastikan database yang sedang digunakan:
-
-```sql
-SELECT DATABASE();
-```
-
-Expected result:
-
-```text
-sara
-```
-
-### 6. Keluar dari MySQL
-
-Setelah konfigurasi database selesai:
-
-```sql
-exit;
-```
-
----
-
-## Environment Configuration
-
-Buat file `.env` berdasarkan `.env.example`.
-
-Contoh:
-
-```env
-PORT=3000
-
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=sara
-DB_USER=root
-DB_PASSWORD=
-```
-
-Keterangan:
-
-| Variable      | Keterangan                       |
-| ------------- | -------------------------------- |
-| `PORT`        | Port yang digunakan oleh backend |
-| `DB_HOST`     | Host MySQL                       |
-| `DB_PORT`     | Port MySQL                       |
-| `DB_NAME`     | Nama database                    |
-| `DB_USER`     | Username MySQL                   |
-| `DB_PASSWORD` | Password MySQL                   |
-
-Sesuaikan `DB_USER` dan `DB_PASSWORD` dengan konfigurasi MySQL pada environment masing-masing.
-
-> Jangan commit file `.env` ke repository. Gunakan `.env.example` sebagai template konfigurasi environment.
-
----
-
-## Database Connection Check
-
-Project menyediakan command khusus untuk melakukan pengecekan koneksi antara backend dan MySQL.
-
-Jalankan:
+Atur `DB_NAME=sara` di `.env`, kemudian:
 
 ```bash
 yarn db:check
+yarn db:migrate:status
+yarn db:migrate
+yarn db:migrate:status
 ```
 
-Jika koneksi berhasil, output akan menunjukkan:
+Hingga PR #10 terdapat **12 migration files**. Jangan mengubah file migrasi yang sudah diterapkan, karena checksum diverifikasi.
 
-```text
-MySQL connection successful
-[ { result: 1 } ]
-```
-
-Proses pengecekan:
-
-```text
-SARA Backend
-      │
-      ▼
-Node.js + mysql2
-      │
-      ▼
-MySQL Server
-      │
-      ▼
-Database "sara"
-```
-
----
-
-## Menjalankan Aplikasi
-
-### Development
-
-Jalankan development server:
+### 5. Run
 
 ```bash
 yarn dev
 ```
 
-Backend akan berjalan pada:
-
-```text
-http://localhost:3000
-```
-
-### Production Build
-
-Compile project TypeScript:
-
-```bash
-yarn build
-```
-
-Hasil build akan berada di directory:
-
-```text
-dist/
-```
-
-Jalankan hasil build:
-
-```bash
-yarn start
-```
-
----
-
-## Type Checking
-
-Untuk melakukan pengecekan TypeScript tanpa menghasilkan file build:
-
-```bash
-yarn typecheck
-```
-
----
-
-## Code Formatting
-
-Project menggunakan **Prettier** untuk menjaga konsistensi formatting kode.
-
-### Format Source Code
-
-```bash
-yarn format
-```
-
-### Check Formatting
-
-```bash
-yarn format:check
-```
-
-> `yarn format:check` digunakan sebagai validasi formatting dan tidak mengubah file.
-
----
-
-## API Health Check
-
-Backend menyediakan endpoint untuk mengecek apakah service berjalan dengan baik.
-
-### Endpoint
+Health check:
 
 ```http
-GET /api/health
+GET http://localhost:3000/api/health
 ```
-
-Akses melalui:
-
-```text
-http://localhost:3000/api/health
-```
-
-Response:
 
 ```json
 {
@@ -351,399 +129,135 @@ Response:
 }
 ```
 
----
+## API Reference
 
-## Development Scripts
+**Base URL:** `http://localhost:3000/api` · **Content-Type:** `application/json` · **Auth:** `Authorization: Bearer <JWT>`
 
-| Command             | Keterangan                                       |
-| ------------------- | ------------------------------------------------ |
-| `yarn dev`          | Menjalankan development server dengan watch mode |
-| `yarn build`        | Melakukan compile TypeScript                     |
-| `yarn start`        | Menjalankan hasil build                          |
-| `yarn typecheck`    | Melakukan pengecekan TypeScript                  |
-| `yarn db:check`     | Mengecek koneksi backend ke MySQL                |
-| `yarn format`       | Memformat file menggunakan Prettier              |
-| `yarn format:check` | Mengecek format file menggunakan Prettier        |
+| Modul | Path | Cakupan |
+| :-- | :-- | :-- |
+| Health | `/health` | GET, publik |
+| Auth | `/auth/*` | Register, verify email, resend OTP, login, me |
+| Kegiatan | `/kegiatan` | List, create, detail, patch, delete |
+| Aktivitas | `/aktivitas` | CRUD, status, history, reminder per aktivitas |
+| Schedule | `/schedule` | Calendar, conflicts |
+| History | `/history` | Audit history global |
+| Reminders | `/reminders` | List, detail, patch, cancel |
+| Devices | `/devices` | Register/upsert, list, patch, unregister |
+| Notifications | `/notifications` | Delivery history |
 
----
+Alur autentikasi: **Register → OTP email → Verify → Login → JWT → Protected APIs**. Register tidak mengembalikan JWT. Token login berlaku 7 hari, tanpa refresh-token/revoke endpoint saat ini.
 
-## Arsitektur Backend
+Respons sukses menggunakan `success: true`. List menggunakan `data` dan `pagination: {limit, offset, count}`; `count` bukan jumlah total data. Hapus sukses menghasilkan HTTP `204` tanpa body. Resource yang bukan milik pengguna biasanya mengembalikan `404`. Waktu input harus ISO 8601 dengan timezone dan dinormalisasi ke UTC.
 
-```mermaid
-flowchart TD
+Referensi teknis: [API Contract v1](docs/api/SARA_Backend_API_Contract_v1.md) · [Schedule & History](docs/api/SARA_Schedule_History_API.md) · [Reminder](docs/api/SARA_Reminder_API.md) · [Notification & FCM](docs/api/SARA_Notification_API.md).
 
-    A["React Native + TypeScript<br/>Mobile Application"]
-    B["HTTPS / REST API"]
-    C["Node.js + Express.js + TypeScript<br/>Backend"]
-    D["Business Logic"]
-    E["MySQL<br/>Database"]
-    F["AI / NLP<br/>Service"]
-    G["Firebase Cloud Messaging<br/>Notification"]
+> API Contract v1 merekam implementasi setelah PR #6, sebelum Schedule/Reminder/Notification. Gunakan dokumen modul di atas dan Postman Collection untuk endpoint terbaru. API NLP, forgot password, refresh token, atau recurring reminders **belum tersedia**.
 
-    A --> B
-    B --> C
-    C --> D
-    D --> E
-    D --> F
-    D --> G
-```
+## Postman & Frontend Testing
 
-Backend SARA dirancang untuk menangani:
+| File | Kegunaan |
+| :-- | :-- |
+| [`SARA_Backend.postman_collection.json`](postman/SARA_Backend.postman_collection.json) | Semua endpoint + status tests, auto-capture JWT/ID |
+| [`SARA_Local.postman_environment.json`](postman/SARA_Local.postman_environment.json) | `baseUrl`, kredensial contoh, variabel ID |
+| [`postman/README.md`](postman/README.md) | Panduan urutan pengujian dan troubleshooting |
 
-* Authentication
-* Activity Management
-* Schedule Management
-* Activity History
-* Reminder
-* Notification Processing
-* Recommendation
-* AI/NLP Integration
+**Quick flow:** Jalankan API → import collection + environment ke Postman → pilih **SARA Local** → atur `email`/`password` akun test → register → verifikasi OTP → login. JWT tersimpan otomatis sebagai `accessToken`. Create Kegiatan/Aktivitas/Reminder/Device otomatis menyimpan `kegiatanId`, `aktivitasId`, `reminderId`, dan `deviceId`.
 
----
+Tanggal pada request Aktivitas, Reminder, dan Schedule **dihasilkan dinamis** agar contoh tidak kadaluwarsa. Endpoint yang mengubah/menghapus data tidak dijalankan otomatis oleh collection; jalankan hanya sesuai urutan dan pada lingkungan development.
 
-## Struktur Project
+Untuk React Native, `localhost` di emulator/ponsel **bukan** IP komputer developer. Android Emulator umum memakai `10.0.2.2:3000`; ponsel fisik memerlukan alamat LAN yang bisa diakses serta pengaturan jaringan yang sesuai.
+
+## Architecture
 
 ```mermaid
 flowchart TD
-
-    A["sara-backend"]
-
-    A --> B["src/"]
-
-    B --> C["config/"]
-    C --> C1["database.ts"]
-    C --> C2["database-check.ts"]
-
-    B --> D["controllers/"]
-    D --> D1["health.controller.ts"]
-
-    B --> E["middlewares/"]
-    E --> E1["error.middleware.ts"]
-
-    B --> F["routes/"]
-    F --> F1["health.routes.ts"]
-    F --> F2["index.ts"]
-
-    B --> G["services/"]
-    B --> H["models/"]
-    B --> I["app.ts"]
-    B --> J["server.ts"]
-
-    A --> K[".env.example"]
-    A --> L[".gitignore"]
-    A --> M[".gitattributes"]
-    A --> N[".yarnrc.yml"]
-    A --> O["README.md"]
-    A --> P["package.json"]
-    A --> Q["tsconfig.json"]
-    A --> R["yarn.lock"]
+    M["React Native Mobile"] -->|HTTP / JSON| API["Express REST API"]
+    API --> AUTH["Auth & JWT"]
+    API --> DOMAIN["Kegiatan · Aktivitas · Schedule"]
+    API --> REM["Reminder & Device APIs"]
+    DOMAIN --> DB[("MySQL 8.0")]
+    AUTH --> DB
+    REM --> DB
+    DB --> RW["Reminder Worker"]
+    RW --> OUT["Notification Outbox"]
+    OUT --> NW["Notification Worker"]
+    NW --> FCM["FCM HTTP v1 / Mock Provider"]
 ```
 
----
-
-## Backend Layer
-
-Struktur backend menggunakan pemisahan tanggung jawab berdasarkan layer.
-
-### Config
-
-Directory:
-
-```text
-src/config/
-```
-
-Digunakan untuk konfigurasi aplikasi, termasuk koneksi database.
-
-File utama:
-
-```text
-database.ts
-```
-
-Berfungsi membuat MySQL connection pool menggunakan `mysql2`.
-
-File pengecekan:
-
-```text
-database-check.ts
-```
-
-Digunakan untuk melakukan validasi koneksi backend ke database MySQL.
-
-### Controllers
-
-Directory:
-
-```text
-src/controllers/
-```
-
-Digunakan untuk menangani HTTP request dan memberikan HTTP response.
-
-Contoh:
-
-```text
-health.controller.ts
-```
-
-### Routes
-
-Directory:
-
-```text
-src/routes/
-```
-
-Digunakan untuk mendefinisikan endpoint API dan menghubungkan route dengan controller.
-
-Contoh:
-
-```text
-health.routes.ts
-```
-
-### Middlewares
-
-Directory:
-
-```text
-src/middlewares/
-```
-
-Digunakan untuk middleware yang berjalan pada request pipeline.
-
-Contoh:
-
-```text
-error.middleware.ts
-```
-
-### Services
-
-Directory:
-
-```text
-src/services/
-```
-
-Disiapkan untuk business logic aplikasi.
-
-### Models
-
-Directory:
-
-```text
-src/models/
-```
-
-Disiapkan untuk representasi data dan integrasi model aplikasi.
-
----
-
-## Version Control
-
-Project menggunakan:
-
-* Git
-* GitHub
-* Trunk-Based Development
-
-### Branch Utama
-
-```text
-main
-```
-
-Branch `main` digunakan sebagai central integration branch.
-
-### Short-Lived Branch
-
-```text
-feature/*
-fix/*
-chore/*
-```
-
-Contoh:
-
-```text
-feature/mysql-setup
-feature/authentication
-feature/activity-api
-fix/database-connection
-chore/update-dependencies
-```
-
-### Alur Development
-
-```mermaid
-flowchart LR
-
-    A["Create Branch"] --> B["Development"]
-    B --> C["Commit"]
-    C --> D["Pull Request"]
-    D --> E["Code Review"]
-    E --> F["Merge → main"]
-```
-
-Branch `main` digunakan sebagai central integration branch.
-
----
-
-## Related Repository
-
-### SARA Mobile
-
-Repository untuk mobile application SARA:
-
-```text
-https://github.com/willysuyanto/sara-mobile
-```
-
-Technology:
-
-```text
-React Native + TypeScript
-```
-
-### SARA Backend
-
-Repository untuk backend service SARA:
-
-```text
-https://github.com/ryanazryan/sara-backend
-```
-
-Technology:
-
-```text
-Node.js + Express.js + TypeScript
-```
-
----
-
-## Project Documentation
-
-Dokumentasi lengkap project SARA dikelola pada Notion:
-
-```text
-https://app.notion.com/p/SARA-3e173f8cd49980d0b374eb7ee56e5afe
-```
-
----
-
-## Project Status
-
-Project SARA berada pada tahap **Software Construction**.
-
-Tahapan pengembangan:
-
-```mermaid
-flowchart LR
-
-    A["Project Setup"]
-    B["Database Setup"]
-    C["Backend API"]
-    D["Mobile Application"]
-    E["Integration"]
-    F["Testing"]
-    G["Deployment"]
-
-    A --> B --> C --> D --> E --> F --> G
-```
-
-Status backend saat ini:
-
-```text
-Backend Repository Setup     → Completed
-Backend API Foundation       → Completed
-MySQL Setup                  → In Progress
-Database Schema              → Planned
-```
-
----
-
-## Current Backend Foundation
-
-Backend foundation saat ini menyediakan:
-
-```text
-Express.js Application
-        │
-        ├── CORS
-        ├── JSON Request Parser
-        ├── REST API Routes
-        ├── Error Middleware
-        └── Health Check
-```
-
-Database foundation menyediakan:
-
-```text
-MySQL 8.0
-    │
-    └── Database: sara
-            │
-            └── mysql2 Connection Pool
-```
-
----
-
-## Next Development Phase
-
-Setelah MySQL setup selesai dan tervalidasi, tahap berikutnya adalah implementasi database schema.
-
-Development flow berikutnya:
-
-```mermaid
-flowchart LR
-
-    A["MySQL Setup"]
-    B["Database Schema Implementation"]
-    C["Seed / Sample Data"]
-    D["Docker Setup"]
-    E["Authentication Backend"]
-    F["Authentication Integration"]
-    G["Core Application Features"]
-
-    A --> B
-    B --> C
-    C --> D
-    D --> E
-    E --> F
-    F --> G
-```
-
-Database schema akan dikembangkan berdasarkan requirement, use case, class/data model, dan kebutuhan fitur SARA.
-
----
-
-## Validation Checklist
-
-Sebelum membuat Pull Request, lakukan validation berikut:
+Worker sebagai proses terpisah:
 
 ```bash
+# sekali jalan
+yarn reminders:run
+yarn notifications:run
+
+# polling berkelanjutan
+yarn reminders:worker
+yarn notifications:worker
+```
+
+`notifications:worker` sudah menjalankan scheduler reminder saat dispatch; tidak wajib menjalankan kedua worker bersamaan. External push bersifat **at-least-once**, bukan exactly-once.
+
+## Developer Commands
+
+| Command | Kegunaan |
+| :-- | :-- |
+| `yarn dev` | Server development |
+| `yarn build` / `yarn start` | Compile dan jalankan build |
+| `yarn typecheck` | Static check TypeScript |
+| `yarn db:check` | Cek koneksi MySQL |
+| `yarn db:migrate:status` | Status migrasi |
+| `yarn db:migrate` | Terapkan migrasi |
+| `yarn reminders:run` | Sekali proses reminder |
+| `yarn notifications:run` | Sekali proses notification |
+| `yarn test:db-migrations` | Test migrasi |
+| `yarn format:check` | Check Prettier |
+
+Gunakan database **`sara_migration_test`** untuk integration test otomatis (test dapat menghapus data):
+
+```bash
+DB_NAME=sara_migration_test yarn db:migrate
 yarn typecheck
 yarn build
-yarn db:check
-yarn format:check
+yarn tsc -p tests/tsconfig.json --pretty false
+DB_NAME=sara_migration_test NOTIFICATION_PROVIDER=mock yarn tsx --test tests/notification.api.integration.test.ts
 ```
 
-Expected validation:
+## Project Structure
 
 ```text
-TypeScript typecheck       → Passed
-Production build           → Passed
-MySQL connection check     → Passed
-Prettier format check      → Passed
+sara-backend/
+├── database/migrations/     # SQL migrations & audit triggers
+├── docs/api/                # API specifications
+├── postman/                 # Collection + environment + usage guide
+├── src/
+│   ├── config/              # MySQL connection
+│   ├── controllers/         # HTTP handlers
+│   ├── db/                  # Migration runner
+│   ├── middlewares/         # Auth / error handler
+│   ├── routes/              # REST endpoints
+│   ├── services/            # Business logic & notification adapters
+│   ├── validators/          # Validation
+│   └── workers/             # Schedulers
+├── tests/                   # Unit & integration tests
+├── .env.example
+├── package.json
+└── README.md
 ```
+
+## Collaboration
+
+- [SARA Backend repository](https://github.com/ryanazryan/sara-backend)
+- [SARA Mobile — React Native](https://github.com/willysuyanto/sara-mobile)
+- [SARA workspace — Notion](https://app.notion.com/p/3e173f8cd49980d0b374eb7ee56e5afe)
+
+Gunakan **short-lived branch → commit → PR → review → merge ke `main`**. Pisahkan status implementasi, keputusan scope, dan pengujian eksternal agar klaim kesiapan tetap akurat.
 
 ---
 
-## License
+<div align="center">
 
-Project ini dibuat untuk keperluan **Tugas Besar / perkuliahan Implementasi dan Pengujian Perangkat Lunak**.
+**SARA · Smart Assistant for Responsive Automation**  
+Proyek akademik — Implementasi dan Pengujian Perangkat Lunak (IMPAL)
 
-```
-```
+</div>
