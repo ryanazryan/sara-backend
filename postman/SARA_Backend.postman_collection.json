@@ -1,0 +1,1446 @@
+{
+  "info": {
+    "_postman_id": "38c1722b-f782-451b-b254-912f7ddb1451",
+    "name": "SARA Backend — API v1 (PR #1–#10)",
+    "description": "Dibangun dari route/controller/validator di ryanazryan/sara-backend main setelah PR #10. 36 requests; testing manual. Import environment SARA Local dan ikuti postman/README.md. Tidak mengandung token nyata.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const now = Date.now();",
+          "const hour = 60 * 60 * 1000;",
+          "const iso = (millis) => new Date(millis).toISOString();",
+          "pm.variables.set(\"activityStartAt\", iso(now + 24 * hour));",
+          "pm.variables.set(\"activityEndAt\", iso(now + 25 * hour));",
+          "pm.variables.set(\"reminderTriggerAt\", iso(now + 2 * hour));",
+          "pm.variables.set(\"reminderExpiresAt\", iso(now + 3 * hour));",
+          "pm.variables.set(\"scheduleFrom\", iso(now - 1 * hour));",
+          "pm.variables.set(\"scheduleTo\", iso(now + 7 * 24 * hour));",
+          "pm.variables.set(\"conflictStartAt\", iso(now + 24 * hour + 10 * 60 * 1000));",
+          "pm.variables.set(\"conflictEndAt\", iso(now + 24 * hour + 40 * 60 * 1000));"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "00 · Health",
+      "description": "Endpoint publik untuk memastikan server aktif.",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/health",
+            "description": "Public liveness endpoint. Tidak menguji koneksi database.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 · Authentication",
+      "description": "Alur: register → kode OTP dari email → verify → login (otomatis menyimpan accessToken) → me. Tidak ada endpoint logout/refresh.",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/register",
+            "description": "HTTP 201 tanpa JWT; jika email tidak terkirim mungkin 503 meskipun akun telah tersimpan. Email unik.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Postman SARA Tester\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"confirmPassword\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 201\", function () { pm.expect(pm.response.code).to.be.oneOf([201]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify email OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/verify-email",
+            "description": "Isi otpCode dari email. Berlaku 5 menit, maksimal 5 percobaan.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"code\": \"{{otpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resend OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/resend-otp",
+            "description": "Jawaban 200 sengaja generik; tidak menjamin email dikirim. Cooldown 60 detik.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login · capture JWT",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "description": "HTTP 200 menyimpan data.token ke accessToken dan data.user.id ke userId pada environment terpilih. 403 EMAIL_NOT_VERIFIED sebelum OTP.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200 login\", () => pm.response.to.have.status(200));",
+                  "const json=pm.response.json();",
+                  "pm.test(\"Token dan user tersedia\", () => { pm.expect(json.success).to.eql(true); pm.expect(json.data.token).to.be.a(\"string\"); pm.expect(json.data.user.id).to.be.a(\"number\"); });",
+                  "if (json.success && json.data && json.data.token) {",
+                  "  pm.environment.set(\"accessToken\", json.data.token);",
+                  "  pm.environment.set(\"userId\", String(json.data.user.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me · JWT",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/me",
+            "description": "Memeriksa profil dan token JWT yang tersimpan."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 · Kegiatan",
+      "description": "CRUD kegiatan. idKegiatan disimpan otomatis setelah create. Hapus setelah semua aktivitas yang terkait dilepas.",
+      "item": [
+        {
+          "name": "List Kegiatan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/kegiatan?limit=20&offset=0",
+            "description": "List hanya kegiatan milik user JWT."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});",
+                  "pm.test(\"List response\", function () {",
+                  "  const r=pm.response.json(); pm.expect(r.data).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Kegiatan · capture ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/kegiatan",
+            "description": "namaKegiatan wajib. estimasiDurasi dalam menit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"namaKegiatan\": \"Proyek Akademik SARA\",\n  \"deskripsi\": \"Pengujian dari Postman\",\n  \"estimasiDurasi\": 120\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 201\", function () { pm.expect(pm.response.code).to.be.oneOf([201]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const r = pm.response.json();",
+                  "  if (r && r.data && r.data.idKegiatan !== undefined && r.data.idKegiatan !== null) {",
+                  "    pm.environment.set(\"kegiatanId\", String(r.data.idKegiatan));",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Kegiatan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/kegiatan/{{kegiatanId}}",
+            "description": "Gunakan ID dari create."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Kegiatan",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/kegiatan/{{kegiatanId}}",
+            "description": "PATCH menerima subset non-kosong.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deskripsi\": \"Kegiatan diperbarui dari Postman\",\n  \"estimasiDurasi\": 180\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Kegiatan",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/kegiatan/{{kegiatanId}}",
+            "description": "HTTP 204; akan 409 jika masih memiliki Aktivitas. Jalankan terakhir."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 204\", function () { pm.expect(pm.response.code).to.be.oneOf([204]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 · Aktivitas",
+      "description": "CRUD aktivitas, update status, dan audit per aktivitas. idAktivitas di-set otomatis setelah create. Semua tanggal bertimezone.",
+      "item": [
+        {
+          "name": "List Aktivitas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/aktivitas?limit=20&offset=0",
+            "description": "Semua aktivitas milik user JWT."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});",
+                  "pm.test(\"List response\", function () {",
+                  "  const r=pm.response.json(); pm.expect(r.data).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Aktivitas · capture ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/aktivitas",
+            "description": "Contoh standalone activity (idKegiatan null). Jadwal digenerate otomatis untuk esok hari.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"namaAktivitas\": \"Review tugas SARA\",\n  \"idKegiatan\": null,\n  \"waktuMulai\": \"{{activityStartAt}}\",\n  \"waktuSelesai\": \"{{activityEndAt}}\",\n  \"kategori\": \"Kuliah\",\n  \"prioritas\": \"Tinggi\",\n  \"lokasi\": null,\n  \"status\": \"TO DO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 201\", function () { pm.expect(pm.response.code).to.be.oneOf([201]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const r = pm.response.json();",
+                  "  if (r && r.data && r.data.idAktivitas !== undefined && r.data.idAktivitas !== null) {",
+                  "    pm.environment.set(\"aktivitasId\", String(r.data.idAktivitas));",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Aktivitas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/aktivitas/{{aktivitasId}}",
+            "description": "Detail aktivitas milik pengguna."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Aktivitas · hubungkan Kegiatan",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/aktivitas/{{aktivitasId}}",
+            "description": "Gunakan setelah Kegiatan dan Aktivitas dibuat. idKegiatan harus milik user.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idKegiatan\": {{kegiatanId}},\n  \"kategori\": \"Akademik\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/aktivitas/{{aktivitasId}}/status",
+            "description": "Body hanya {status}; saat ini string 1–50 karakter, belum ada enum lifecycle.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN PROGRESS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Activity History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/aktivitas/{{aktivitasId}}/history?limit=20&offset=0",
+            "description": "Audit event CREATED/UPDATED/DELETED pada aktivitas; history dapat diakses sesudah hard-delete."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});",
+                  "pm.test(\"List response\", function () {",
+                  "  const r=pm.response.json(); pm.expect(r.data).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Aktivitas",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/aktivitas/{{aktivitasId}}",
+            "description": "HTTP 204; hapus setelah reminder dan audit selesai. Reminder terkait ikut terhapus."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 204\", function () { pm.expect(pm.response.code).to.be.oneOf([204]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 · Schedule & History",
+      "description": "Rentang waktu otomatis relatif terhadap saat request. Schedule maksimum 90 hari.",
+      "item": [
+        {
+          "name": "Schedule / Calendar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/schedule?from={{scheduleFrom}}&to={{scheduleTo}}&limit=20&offset=0",
+            "description": "Aktivitas yang intervalnya bersinggungan dengan [from,to)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});",
+                  "pm.test(\"List response\", function () {",
+                  "  const r=pm.response.json(); pm.expect(r.data).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check Schedule Conflicts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/schedule/conflicts?startAt={{conflictStartAt}}&endAt={{conflictEndAt}}",
+            "description": "Hanya aktivitas berinterval lengkap; respons data.conflicts."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const r=pm.response.json();",
+                  "pm.test(\"Array konflik\", () => { pm.expect(r.success).to.eql(true); pm.expect(r.data.conflicts).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Global History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/history?limit=20&offset=0",
+            "description": "Daftar audit milik JWT. Dapat menambah filter activityId dan eventType."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});",
+                  "pm.test(\"List response\", function () {",
+                  "  const r=pm.response.json(); pm.expect(r.data).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "History · UPDATED only",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/history?eventType=UPDATED&limit=20&offset=0",
+            "description": "Filter audit UPDATED saja."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});",
+                  "pm.test(\"List response\", function () {",
+                  "  const r=pm.response.json(); pm.expect(r.data).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 · Reminders",
+      "description": "Worker reminders:run menandai PENDING → DUE; DUE tidak berarti FCM diterima. Trigger dan expiry otomatis di masa depan.",
+      "item": [
+        {
+          "name": "Create Reminder · capture ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/aktivitas/{{aktivitasId}}/reminders",
+            "description": "Wajib punya aktivitas. Trigger at sekitar 2 jam ke depan.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"triggerAt\": \"{{reminderTriggerAt}}\",\n  \"expiresAt\": \"{{reminderExpiresAt}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 201\", function () { pm.expect(pm.response.code).to.be.oneOf([201]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const r = pm.response.json();",
+                  "  if (r && r.data && r.data.idReminder !== undefined && r.data.idReminder !== null) {",
+                  "    pm.environment.set(\"reminderId\", String(r.data.idReminder));",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reminders for Aktivitas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/aktivitas/{{aktivitasId}}/reminders?limit=20&offset=0",
+            "description": "List reminder untuk satu aktivitas."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});",
+                  "pm.test(\"List response\", function () {",
+                  "  const r=pm.response.json(); pm.expect(r.data).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Reminders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/reminders?limit=20&offset=0",
+            "description": "Semua reminder milik JWT; status filter opsional."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});",
+                  "pm.test(\"List response\", function () {",
+                  "  const r=pm.response.json(); pm.expect(r.data).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Pending Reminders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/reminders?status=PENDING&limit=20&offset=0",
+            "description": "Filter status PENDING."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});",
+                  "pm.test(\"List response\", function () {",
+                  "  const r=pm.response.json(); pm.expect(r.data).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Reminder",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/reminders/{{reminderId}}",
+            "description": "Detail reminder."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reschedule Reminder",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/reminders/{{reminderId}}",
+            "description": "Hanya PENDING; demo menggunakan waktu mendatang dan expiresAt null.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"triggerAt\": \"{{reminderTriggerAt}}\",\n  \"expiresAt\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel Reminder",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/reminders/{{reminderId}}",
+            "description": "HTTP 204; status PENDING/DUE menjadi CANCELLED. Cancel ulang juga 204."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 204\", function () { pm.expect(pm.response.code).to.be.oneOf([204]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 · Devices",
+      "description": "Registrasi perangkat untuk mock notification. Token default contoh hanya untuk mock; ganti token FCM asli untuk pengujian nyata.",
+      "item": [
+        {
+          "name": "Register / Upsert Device · capture ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/devices",
+            "description": "Contoh menggunakan token palsu yang berbentuk valid untuk NOTIFICATION_PROVIDER=mock. First create 201, upsert 200.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"installationId\": \"{{installationId}}\",\n  \"platform\": \"android\",\n  \"notificationPermission\": \"GRANTED\",\n  \"fcmToken\": \"{{fcmToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200/201\", function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const r = pm.response.json();",
+                  "  if (r && r.data && r.data.idDevice !== undefined && r.data.idDevice !== null) {",
+                  "    pm.environment.set(\"deviceId\", String(r.data.idDevice));",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Devices",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/devices",
+            "description": "Tidak mengembalikan fcmToken."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});",
+                  "pm.test(\"List response\", function () {",
+                  "  const r=pm.response.json(); pm.expect(r.data).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Device Permission",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/devices/{{deviceId}}",
+            "description": "Set UNKNOWN akan menghapus token dari database; untuk restore gunakan upsert.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notificationPermission\": \"UNKNOWN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unregister Device",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/devices/{{deviceId}}",
+            "description": "Soft unregister; HTTP 204."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 204\", function () { pm.expect(pm.response.code).to.be.oneOf([204]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 · Notifications",
+      "description": "Notifikasi hanya terbuat melalui worker dan reminder DUE dengan device aktif. ACCEPTED berarti diterima provider, bukan terkirim ke ponsel.",
+      "item": [
+        {
+          "name": "List Notification Deliveries",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications?limit=20&offset=0",
+            "description": "List status QUEUED / SENDING / RETRY / ACCEPTED / FAILED / SKIPPED."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status 200\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Response JSON / success\", function () {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r).to.have.property(\"success\", true);",
+                  "});",
+                  "pm.test(\"List response\", function () {",
+                  "  const r=pm.response.json(); pm.expect(r.data).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08 · Negative Tests (manual)",
+      "description": "Tidak mengubah data. Jalankan manual untuk memverifikasi perlindungan JWT.",
+      "item": [
+        {
+          "name": "Unauthorized Me → 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/me",
+            "description": "Tanpa JWT harus 401.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401 tanpa bearer\", () => pm.response.to.have.status(401));",
+                  "const r=pm.response.json(); pm.test(\"API menolak token kosong\", () => pm.expect(r.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown Kegiatan ID → 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/kegiatan/4294967295",
+            "description": "ID valid secara format tetapi tidak ada untuk user; harus 404."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": []
+}
