@@ -8,6 +8,7 @@ import historyRoutes from "./history.routes.js";
 import reminderRoutes from "./reminder.routes.js";
 import deviceRoutes from "./device.routes.js";
 import notificationRoutes from "./notification.routes.js";
+import nlpRoutes from "./nlp.routes.js";
 
 const router = Router();
 
@@ -20,5 +21,6 @@ router.use("/api/history", historyRoutes);
 router.use("/api/reminders", reminderRoutes);
 router.use("/api/devices", deviceRoutes);
 router.use("/api/notifications", notificationRoutes);
+router.use("/api/ai", nlpRoutes);
 
 export default router;

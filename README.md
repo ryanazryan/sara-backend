@@ -22,7 +22,7 @@ REST API untuk aktivitas, jadwal, reminder, dan notifikasi pada aplikasi SARA.
 
 **SARA** merupakan *smart productivity assistant* untuk membantu pengguna mengelola kegiatan dan aktivitas sehari-hari. Repository ini menangani **REST API, autentikasi, persistensi MySQL, penjadwalan, pengingat, dan pemrosesan notifikasi**. Aplikasi mobile React Native dikerjakan pada repository terpisah.
 
-| Modul | Implementasi pada `main` setelah PR #10 |
+| Modul | Implementasi pada `main` setelah PR #12 |
 | :-- | :-- |
 | Authentication | Register, email OTP, resend OTP, login JWT, profil pengguna |
 | Kegiatan & Aktivitas | CRUD dengan validasi dan pembatasan kepemilikan JWT |
@@ -30,7 +30,8 @@ REST API untuk aktivitas, jadwal, reminder, dan notifikasi pada aplikasi SARA.
 | Activity History | Audit create, update, delete melalui MySQL triggers |
 | Reminder Engine | Reminder CRUD dan worker untuk status `PENDING / DUE / CANCELLED / EXPIRED` |
 | Notification | Device registration, delivery outbox, retry, FCM HTTP v1 adapter |
-| NLP / Smart Assistance | **Belum tersedia di `main`** |
+| NLP Service | Perintah Indonesia `CREATE_ACTIVITY` dengan preview, klarifikasi, konfirmasi atomik ([API](docs/api/SARA_NLP_API.md)) |
+| Smart Assistance | **Belum tersedia** |
 
 > **Status pengujian:** Pengujian Notification Service memakai provider `mock`. Pengiriman FCM nyata serta end-to-end React Native memerlukan konfigurasi dan pengujian tambahan. `ACCEPTED` berarti FCM menerima request, bukan bukti notifikasi sudah tampil di perangkat.
 
@@ -108,7 +109,7 @@ yarn db:migrate
 yarn db:migrate:status
 ```
 
-Hingga PR #10 terdapat **12 migration files**. Jangan mengubah file migrasi yang sudah diterapkan, karena checksum diverifikasi.
+Hingga PR #12 terdapat **13 migration files**. Jangan mengubah file migrasi yang sudah diterapkan, karena checksum diverifikasi.
 
 ### 5. Run
 
@@ -149,9 +150,9 @@ Alur autentikasi: **Register → OTP email → Verify → Login → JWT → Prot
 
 Respons sukses menggunakan `success: true`. List menggunakan `data` dan `pagination: {limit, offset, count}`; `count` bukan jumlah total data. Hapus sukses menghasilkan HTTP `204` tanpa body. Resource yang bukan milik pengguna biasanya mengembalikan `404`. Waktu input harus ISO 8601 dengan timezone dan dinormalisasi ke UTC.
 
-Referensi teknis: [API Contract v1](docs/api/SARA_Backend_API_Contract_v1.md) · [Schedule & History](docs/api/SARA_Schedule_History_API.md) · [Reminder](docs/api/SARA_Reminder_API.md) · [Notification & FCM](docs/api/SARA_Notification_API.md).
+Referensi teknis: [API Contract v1](docs/api/SARA_Backend_API_Contract_v1.md) · [Schedule & History](docs/api/SARA_Schedule_History_API.md) · [Reminder](docs/api/SARA_Reminder_API.md) · [Notification & FCM](docs/api/SARA_Notification_API.md) · [NLP](docs/api/SARA_NLP_API.md).
 
-> API Contract v1 merekam implementasi setelah PR #6, sebelum Schedule/Reminder/Notification. Gunakan dokumen modul di atas dan Postman Collection untuk endpoint terbaru. API NLP, forgot password, refresh token, atau recurring reminders **belum tersedia**.
+> API Contract v1 merekam implementasi setelah PR #6. Gunakan dokumen modul dan Postman Collection untuk endpoint terbaru. NLP yang tersedia baru mendukung `CREATE_ACTIVITY` berbasis aturan; update/delete/query via NLP, forgot password, refresh token, dan recurring reminders belum tersedia.
 
 ## Postman & Frontend Testing
 
@@ -161,7 +162,7 @@ Referensi teknis: [API Contract v1](docs/api/SARA_Backend_API_Contract_v1.md) ·
 | [`SARA_Local.postman_environment.json`](postman/SARA_Local.postman_environment.json) | `baseUrl`, kredensial contoh, variabel ID |
 | [`postman/README.md`](postman/README.md) | Panduan urutan pengujian dan troubleshooting |
 
-**Quick flow:** Jalankan API → import collection + environment ke Postman → pilih **SARA Local** → atur `email`/`password` akun test → register → verifikasi OTP → login. JWT tersimpan otomatis sebagai `accessToken`. Create Kegiatan/Aktivitas/Reminder/Device otomatis menyimpan `kegiatanId`, `aktivitasId`, `reminderId`, dan `deviceId`.
+**Quick flow:** Jalankan API → import collection + environment ke Postman → pilih **SARA Local** → atur `email`/`password` akun test → register → verifikasi OTP → login. JWT tersimpan otomatis sebagai `accessToken`. Create Kegiatan/Aktivitas/Reminder/Device otomatis menyimpan `kegiatanId`, `aktivitasId`, `reminderId`, dan `deviceId`. Grup **09 · NLP** menyimpan `nlpInterpretationId` setelah Parse, lalu memungkinkan preview dan confirm.
 
 Tanggal pada request Aktivitas, Reminder, dan Schedule **dihasilkan dinamis** agar contoh tidak kadaluwarsa. Endpoint yang mengubah/menghapus data tidak dijalankan otomatis oleh collection; jalankan hanya sesuai urutan dan pada lingkungan development.
 
