@@ -1,6 +1,6 @@
-# Postman — SARA Backend (hingga PR #10)
+# Postman — SARA Backend (hingga PR #13)
 
-Collection dan environment ini dibuat berdasarkan routes/controllers/validators pada branch `main` setelah PR #10 merged. **Tidak ada endpoint NLP atau forgot password** pada versi ini.
+Collection dan environment ini dibuat berdasarkan routes/controllers/validators pada branch `main` setelah PR #13 merged. **NLP dan Smart Assistance tersedia; forgot password belum tersedia.**
 
 ## Import dan konfigurasi
 
@@ -61,4 +61,9 @@ Default `fcmToken` environment adalah token **palsu untuk provider mock**, bukan
 
 ## Hal yang belum tersedia di main
 
-NLP commands, forgot/reset password, refresh token, endpoint revoke logout, recurring reminders, serta statistik produktivitas lanjutan belum tersedia pada baseline ini.
+Forgot/reset password, refresh token, endpoint revoke logout, recurring reminders, serta statistik produktivitas lanjutan belum tersedia pada baseline ini.
+
+
+## NLP & Smart Assistance (PR #12–#13)
+
+Setelah login dan Create Aktivitas, jalankan grup `09 · NLP` untuk parse/confirm perintah bahasa alami atau grup `10 · Smart Assistance (PR #13)` untuk mencari slot kosong. Pada Smart Assistance, request Create akan menyimpan `smartSuggestionId` otomatis, lalu Read menampilkan slot dan Confirm mengubah jadwal aktivitas **hanya ketika Anda menjalankannya secara eksplisit**. Jika aktivitas memiliki reminder aktif, konfirmasi akan ditolak sampai reminder ditinjau/dibatalkan. Request dapat menghasilkan `NO_SLOTS` apabila rentang penuh. Jangan menjalankan request mutatif secara massal.

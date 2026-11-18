@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "38c1722b-f782-451b-b254-912f7ddb1451",
-    "name": "SARA Backend — API v1 (PR #1–#12 NLP)",
-    "description": "Dibangun dari route/controller/validator di ryanazryan/sara-backend main setelah PR #12. 41 requests; testing manual. Import environment SARA Local dan ikuti postman/README.md. Tidak mengandung token nyata.",
+    "name": "SARA Backend — API v1 (PR #1–#13 Smart Assistance)",
+    "description": "API routes implemented through PR #13, with Smart Assistance preview/confirm. Import SARA Local environment. Avoid running destructive requests in bulk.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -1642,6 +1642,135 @@
                   "pm.test(\"HTTP 422\", () => pm.expect(pm.response.code).to.be.oneOf([422]));",
                   "const r = pm.response.json();",
                   "pm.test(\"Response success\", () => pm.expect(r.success).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10 · Smart Assistance (PR #13)",
+      "description": "Run after Auth login and Create Aktivitas. No automatic deletion. Confirm mutates existing activity schedule only.",
+      "item": [
+        {
+          "name": "Create slot suggestions · capture ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/assistant/suggestions",
+            "description": "Generate 15-minute TTL preview for the owned aktivitasId. Date window is calculated for tomorrow in UTC.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activityId\": {{aktivitasId}},\n  \"windowStart\": \"{{smartWindowStart}}\",\n  \"windowEnd\": \"{{smartWindowEnd}}\",\n  \"durationMinutes\": 60,\n  \"bufferMinutes\": 0,\n  \"maxSuggestions\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const tomorrow = new Date(Date.now() + 24 * 3600000);",
+                  "tomorrow.setUTCHours(9, 0, 0, 0);",
+                  "if (tomorrow.getTime() <= Date.now()) tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);",
+                  "pm.variables.set('smartWindowStart', tomorrow.toISOString());",
+                  "pm.variables.set('smartWindowEnd', new Date(tomorrow.getTime() + 8 * 3600000).toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201 suggestions preview', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) {",
+                  "  const d = pm.response.json().data;",
+                  "  if (d && d.id) pm.environment.set('smartSuggestionId', d.id);",
+                  "  pm.test('Has availableSlots array', () => pm.expect(d.availableSlots).to.be.an('array'));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read suggestion",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/assistant/suggestions/{{smartSuggestionId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 suggestion detail', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm first slot · mutates schedule",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/assistant/suggestions/{{smartSuggestionId}}/confirm",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Run manually only after inspecting availableSlots and checking reminders; repeated same slotIndex replays safely.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"slotIndex\": 0}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 applied/replayed', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Priority ranking (read only)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/assistant/priorities?limit=20&offset=0"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 priorities', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) pm.test('Ranks are returned', () => pm.expect(pm.response.json().data).to.be.an('array'));"
                 ]
               }
             }

@@ -22,7 +22,7 @@ REST API untuk aktivitas, jadwal, reminder, dan notifikasi pada aplikasi SARA.
 
 **SARA** merupakan *smart productivity assistant* untuk membantu pengguna mengelola kegiatan dan aktivitas sehari-hari. Repository ini menangani **REST API, autentikasi, persistensi MySQL, penjadwalan, pengingat, dan pemrosesan notifikasi**. Aplikasi mobile React Native dikerjakan pada repository terpisah.
 
-| Modul | Implementasi pada `main` setelah PR #12 |
+| Modul | Implementasi pada `main` setelah PR #13 |
 | :-- | :-- |
 | Authentication | Register, email OTP, resend OTP, login JWT, profil pengguna |
 | Kegiatan & Aktivitas | CRUD dengan validasi dan pembatasan kepemilikan JWT |
@@ -31,7 +31,7 @@ REST API untuk aktivitas, jadwal, reminder, dan notifikasi pada aplikasi SARA.
 | Reminder Engine | Reminder CRUD dan worker untuk status `PENDING / DUE / CANCELLED / EXPIRED` |
 | Notification | Device registration, delivery outbox, retry, FCM HTTP v1 adapter |
 | NLP Service | Perintah Indonesia `CREATE_ACTIVITY` dengan preview, klarifikasi, konfirmasi atomik ([API](docs/api/SARA_NLP_API.md)) |
-| Smart Assistance | **Belum tersedia** |
+| Smart Assistance | Rekomendasi slot kosong, deteksi benturan, ranking prioritas, konfirmasi jadwal ([API](docs/api/SARA_Smart_Assistance_API.md)) |
 
 > **Status pengujian:** Pengujian Notification Service memakai provider `mock`. Pengiriman FCM nyata serta end-to-end React Native memerlukan konfigurasi dan pengujian tambahan. `ACCEPTED` berarti FCM menerima request, bukan bukti notifikasi sudah tampil di perangkat.
 
