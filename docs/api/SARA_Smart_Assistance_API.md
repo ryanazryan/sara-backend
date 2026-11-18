@@ -84,6 +84,7 @@ Success HTTP 200:
     "startAt": "2026-12-01T02:00:00Z",
     "endAt": "2026-12-01T03:00:00Z",
     "remindersUpdated": false,
+    "shiftedReminders": 0,
     "historyRecorded": true
   }
 }
@@ -91,11 +92,11 @@ Success HTTP 200:
 
 A repeated confirm using **the same** `slotIndex` returns HTTP 200 and `replayed: true`, with no additional update. A different `slotIndex` returns `409 ALREADY_APPLIED`. Confirm does not create or delete Kegiatan/Aktivitas. It only reschedules the selected existing activity.
 
-**Reminder safety:** If the target has `PENDING` or `DUE` reminders, confirmation returns `409 REMINDERS_REQUIRE_REVIEW`. The client must explicitly cancel/reschedule those reminders before applying; Smart Assistance does not silently rewrite them.
+**Reminder consistency (PR #15):** When the target has `PENDING` reminders and a known start time, confirmation automatically shifts each reminder's `triggerAt` and optional `expiresAt` by the activity start-time delta in the **same transaction**; each shifted reminder's revision increments. The response includes `remindersUpdated` and `shiftedReminders`. The preview field `requiresReminderReview` remains an advisory indicator so the mobile UI can disclose this effect. A `DUE` reminder or an unschedulable time relationship returns `409 REMINDER_REVIEW_REQUIRED`; a shift into the past returns `409 REMINDER_SHIFT_PAST`. These failures roll back the entire schedule change. See [Schedule & Reminder Consistency](SARA_Schedule_Reminder_Consistency_PR15.md).
 
 Other conflicts: `409 SUGGESTION_EXPIRED`, `SLOT_PAST`, `ACTIVITY_CHANGED`, `SLOT_CONFLICT`, `NO_SLOTS`. Invalid ID/body/slot => 422; not-owned/missing => 404; missing/invalid JWT => 401.
 
-Concurrency: Confirm serializes Smart Assistance confirmations per user by locking the `Pengguna` row, then checks for schedule conflicts with a locking read. **Other existing CRUD routes do not participate in the same user-lock protocol**; extremely concurrent direct PATCH/POST activity requests can still race against confirmation. Do not claim a global database uniqueness guarantee for time slots. For production-grade no-overlap enforcement, unify scheduling mutations behind a shared transaction/locking protocol.
+Concurrency (PR #15): Confirm, Activity CRUD writes, NLP confirmation, and Reminder writes now participate in the same per-owner row-lock protocol. Smart Assistance rechecks conflicts while holding this lock. **The ordinary Activity CRUD contract still permits deliberate overlaps**, and direct SQL / uncoordinated future writers may bypass this protocol; this is not a global database uniqueness guarantee.
 
 ### GET `/api/assistant/priorities`
 

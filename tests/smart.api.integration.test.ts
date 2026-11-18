@@ -114,9 +114,17 @@ test("Smart Assistance suggests owned slots and confirms safely without duplicat
     const request3 = await call("POST", "/api/assistant/suggestions", jwtA, { ...request, activityId: target3 });
     assert.equal(request3.status, 201);
     assert.equal(request3.json.data?.requiresReminderReview, true);
-    const blocked = await call("POST", `/api/assistant/suggestions/${request3.json.data?.id}/confirm`, jwtA, { slotIndex: 0 });
-    assert.equal(blocked.status, 409);
-    assert.equal(blocked.json.code, "REMINDERS_REQUIRE_REVIEW");
+    const shifted = await call("POST", `/api/assistant/suggestions/${request3.json.data?.id}/confirm`, jwtA, { slotIndex: 0 });
+    assert.equal(shifted.status, 200, JSON.stringify(shifted.json));
+    assert.equal(shifted.json.data?.remindersUpdated, true);
+    assert.equal(shifted.json.data?.shiftedReminders, 1);
+    const [pending] = await pool.execute<(RowDataPacket & { revision: number; triggerAt: string })[]>(
+      `SELECT revision, DATE_FORMAT(triggerAt, '%Y-%m-%dT%H:%i:%sZ') AS triggerAt
+       FROM activity_reminders WHERE idAktivitas = ? LIMIT 1`, [target3]);
+    assert.equal(pending[0]?.revision, 2);
+    const newStart = Date.parse((shifted.json.data?.startAt as string));
+    const oldStart = fromMs - 7 * 3600000;
+    assert.equal(Date.parse(pending[0].triggerAt), fromMs + 8 * 3600000 + (newStart - oldStart));
   } finally {
     try {
       for (const id of users) {

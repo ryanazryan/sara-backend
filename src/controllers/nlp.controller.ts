@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { Request, Response } from "express";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import pool from "../config/database.js";
+import { lockScheduleOwner } from "../services/schedule-consistency.service.js";
 import { interpretIndonesian, type Draft } from "../services/nlp.service.js";
 import {
   parseNlpRequest, parseConfirmRequest, validInterpretationId,
@@ -127,6 +128,11 @@ export async function confirmInterpretation(req: Request, res: Response): Promis
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
+    // Use the same owner lock as Aktivitas CRUD and Smart Assistance.
+    if (!(await lockScheduleOwner(connection, owner(res)))) {
+      await connection.rollback();
+      res.status(401).json({ success: false, message: "Invalid account" }); return;
+    }
     // MySQL row lock serializes concurrent confirm calls. No duplicate activity.
     const [rows] = await connection.execute<InterpretationRow[]>(
       `SELECT ${selectColumns} FROM nlp_interpretations

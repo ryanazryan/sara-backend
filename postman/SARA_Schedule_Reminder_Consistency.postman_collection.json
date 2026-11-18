@@ -1,0 +1,164 @@
+{
+  "info": {
+    "name": "SARA PR15 — Schedule & Reminder Consistency (Companion)",
+    "description": "Import alongside main collection. Use SARA Local, run login from main collection first, then execute these requests in order. Reminder shifts are based on activity start delta. All requests mutate development database only.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const hour = 3600000;",
+          "const now = Date.now();",
+          "if (!pm.environment.get(\"consistencyBase\") || Number(pm.environment.get(\"consistencyBase\")) < now) {",
+          "  pm.environment.set(\"consistencyBase\", String(Math.ceil((now + 5 * 24 * hour) / hour) * hour));",
+          "}",
+          "const start = Number(pm.environment.get(\"consistencyBase\"));",
+          "const iso = (ms) => new Date(ms).toISOString();",
+          "pm.variables.set(\"activityStartAt\", iso(start));",
+          "pm.variables.set(\"activityEndAt\", iso(start+hour));",
+          "pm.variables.set(\"consistencyReminderAt\", iso(start-15*60000));",
+          "pm.variables.set(\"consistencyMovedStart\", iso(start+hour));",
+          "pm.variables.set(\"consistencyMovedEnd\", iso(start+2*hour));"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Create scheduled activity",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/aktivitas",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"namaAktivitas\": \"PR15 Consistency Test\",\n  \"waktuMulai\": \"{{activityStartAt}}\",\n  \"waktuSelesai\": \"{{activityEndAt}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if(pm.response.code===201){pm.environment.set(\"aktivitasId\",pm.response.json().data.idAktivitas);}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Create pending reminder (15m before activity)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/aktivitas/{{aktivitasId}}/reminders",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"triggerAt\": \"{{consistencyReminderAt}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if(pm.response.code===201){pm.environment.set(\"reminderId\",pm.response.json().data.idReminder);}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Move activity +1 hour (atomic reminder shift)",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/aktivitas/{{aktivitasId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"waktuMulai\": \"{{consistencyMovedStart}}\",\n  \"waktuSelesai\": \"{{consistencyMovedEnd}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Schedule update\",()=>pm.expect(pm.response.code).to.be.oneOf([200,409]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Read shifted reminder",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/reminders/{{reminderId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Reminder visible\",()=>pm.expect(pm.response.code).to.eql(200));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

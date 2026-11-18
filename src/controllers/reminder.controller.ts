@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import pool from "../config/database.js";
+import { lockScheduleOwner } from "../services/schedule-consistency.service.js";
 import { parseId, parsePagination } from "../validators/activity.validators.js";
 import { isFutureReminder, parseReminder, parseReminderList } from "../validators/reminder.validators.js";
 
@@ -124,6 +125,9 @@ export async function createReminder(req: Request, res: Response): Promise<void>
   let idReminder: number;
   try {
     await connection.beginTransaction();
+    if (!(await lockScheduleOwner(connection, userId(res)))) {
+      await connection.rollback(); res.status(401).json({ success: false, message: "Invalid account" }); return;
+    }
     const [owned] = await connection.execute<ExistsRow[]>(
       "SELECT 1 AS found FROM Aktivitas WHERE idAktivitas = ? AND idPengguna = ? FOR UPDATE",
       [id, userId(res)],
@@ -155,63 +159,70 @@ export async function updateReminder(req: Request, res: Response): Promise<void>
   const id = invalidId(req, res);
   if (id === null) return;
   const parsed = parseReminder(req.body, true);
-  if (!parsed.ok) {
-    res.status(422).json({ success: false, message: parsed.message });
-    return;
-  }
-  const existing = await ownedReminder(id, userId(res));
-  if (!existing) {
-    res.status(404).json({ success: false, message: "Reminder not found" });
-    return;
-  }
-  if (existing.status !== "PENDING") {
-    res.status(409).json({ success: false, message: "Only PENDING reminders can be updated" });
-    return;
-  }
-  const triggerAt = parsed.data.triggerAt ?? asSqlDate(existing.triggerAt);
-  const expiresAt = parsed.data.expiresAt === undefined
-    ? (existing.expiresAt === null ? null : asSqlDate(existing.expiresAt))
-    : parsed.data.expiresAt;
-  if (!isFutureReminder(triggerAt, expiresAt)) {
-    res.status(422).json({ success: false, message: "Reminder trigger must be in future and expiry must be later" });
-    return;
-  }
-  const [result] = await pool.execute<ResultSetHeader>(
-    `UPDATE activity_reminders r JOIN Aktivitas a ON a.idAktivitas = r.idAktivitas
-     SET r.triggerAt = ?, r.expiresAt = ?, r.revision = r.revision + 1,
-         r.updatedAt = UTC_TIMESTAMP(6)
-     WHERE r.idReminder = ? AND a.idPengguna = ? AND r.status = 'PENDING'`,
-    [triggerAt, expiresAt, id, userId(res)],
-  );
-  if (!result.affectedRows) {
-    res.status(409).json({ success: false, message: "Reminder changed or no longer pending" });
-    return;
-  }
+  if (!parsed.ok) { res.status(422).json({ success: false, message: parsed.message }); return; }
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    if (!(await lockScheduleOwner(connection, userId(res)))) {
+      await connection.rollback(); res.status(401).json({ success: false, message: "Invalid account" }); return;
+    }
+    const [rows] = await connection.execute<ReminderRow[]>(
+      `SELECT ${reminderColumns} FROM activity_reminders r
+       JOIN Aktivitas a ON a.idAktivitas = r.idAktivitas
+       WHERE r.idReminder = ? AND a.idPengguna = ? FOR UPDATE`, [id, userId(res)]);
+    const existing = rows[0];
+    if (!existing) {
+      await connection.rollback(); res.status(404).json({ success: false, message: "Reminder not found" }); return;
+    }
+    if (existing.status !== "PENDING") {
+      await connection.rollback(); res.status(409).json({ success: false, message: "Only PENDING reminders can be updated" }); return;
+    }
+    const triggerAt = parsed.data.triggerAt ?? asSqlDate(existing.triggerAt);
+    const expiresAt = parsed.data.expiresAt === undefined
+      ? (existing.expiresAt === null ? null : asSqlDate(existing.expiresAt)) : parsed.data.expiresAt;
+    if (!isFutureReminder(triggerAt, expiresAt)) {
+      await connection.rollback(); res.status(422).json({ success: false,
+        message: "Reminder trigger must be in future and expiry must be later" }); return;
+    }
+    await connection.execute<ResultSetHeader>(
+      `UPDATE activity_reminders SET triggerAt = ?, expiresAt = ?, revision = revision + 1,
+       updatedAt = UTC_TIMESTAMP(6) WHERE idReminder = ? AND status = 'PENDING'`,
+      [triggerAt, expiresAt, id]);
+    await connection.commit();
+  } catch (error) { await connection.rollback(); throw error; }
+  finally { connection.release(); }
   res.json({ success: true, data: await ownedReminder(id, userId(res)) });
 }
 
 export async function cancelReminder(req: Request, res: Response): Promise<void> {
   const id = invalidId(req, res);
   if (id === null) return;
-  const existing = await ownedReminder(id, userId(res));
-  if (!existing) {
-    res.status(404).json({ success: false, message: "Reminder not found" });
-    return;
-  }
-  if (existing.status === "CANCELLED") {
-    res.status(204).end();
-    return;
-  }
-  const [result] = await pool.execute<ResultSetHeader>(
-    `UPDATE activity_reminders r JOIN Aktivitas a ON a.idAktivitas = r.idAktivitas
-     SET r.status = 'CANCELLED', r.revision = r.revision + 1,
-         r.updatedAt = UTC_TIMESTAMP(6)
-     WHERE r.idReminder = ? AND a.idPengguna = ? AND r.status IN ('PENDING', 'DUE')`,
-    [id, userId(res)],
-  );
-  if (!result.affectedRows) {
-    res.status(409).json({ success: false, message: "Reminder cannot be cancelled in current state" });
-    return;
-  }
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    if (!(await lockScheduleOwner(connection, userId(res)))) {
+      await connection.rollback(); res.status(401).json({ success: false, message: "Invalid account" }); return;
+    }
+    const [rows] = await connection.execute<ReminderRow[]>(
+      `SELECT ${reminderColumns} FROM activity_reminders r
+       JOIN Aktivitas a ON a.idAktivitas = r.idAktivitas
+       WHERE r.idReminder = ? AND a.idPengguna = ? FOR UPDATE`, [id, userId(res)]);
+    const existing = rows[0];
+    if (!existing) {
+      await connection.rollback(); res.status(404).json({ success: false, message: "Reminder not found" }); return;
+    }
+    if (existing.status === "CANCELLED") {
+      await connection.rollback(); res.status(204).end(); return;
+    }
+    if (existing.status !== "PENDING" && existing.status !== "DUE") {
+      await connection.rollback(); res.status(409).json({ success: false,
+        message: "Reminder cannot be cancelled in current state" }); return;
+    }
+    await connection.execute<ResultSetHeader>(
+      `UPDATE activity_reminders SET status = 'CANCELLED', revision = revision + 1,
+       updatedAt = UTC_TIMESTAMP(6) WHERE idReminder = ?`, [id]);
+    await connection.commit();
+  } catch (error) { await connection.rollback(); throw error; }
+  finally { connection.release(); }
   res.status(204).end();
 }
