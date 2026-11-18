@@ -1,0 +1,49 @@
+name: SARA Docker Deployment Smoke
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docker-smoke:
+    name: Build image, migrate MySQL and smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Ephemeral CI-only values. Never use these on deployed infrastructure.
+      MYSQL_ROOT_PASSWORD: sara-ci-root-7df01fc56c
+      MYSQL_DATABASE: sara
+      MYSQL_USER: sara_app
+      MYSQL_PASSWORD: sara-ci-app-3ce34d9a62
+      JWT_SECRET: sara-ci-jwt-secret-only-f4755bde1af3236b83
+      OTP_PEPPER: sara-ci-otp-pepper-only-bb35417af6a9031dca
+      NODE_ENV: development
+      NOTIFICATION_PROVIDER: mock
+      SARA_API_PORT: '3000'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate compose configuration
+        run: docker compose -f compose.yaml config --quiet
+      - name: Build application image
+        run: docker compose -f compose.yaml build api
+      - name: Start MySQL, migrate and start API/worker
+        run: docker compose -f compose.yaml up --wait -d api worker
+      - name: Verify database connection from application image
+        run: docker compose -f compose.yaml run --rm --no-deps migrate node dist/config/database-check.js
+      - name: Verify HTTP liveness and auth guard
+        run: node scripts/docker-smoke.mjs
+      - name: Show container logs on failure
+        if: failure()
+        run: docker compose -f compose.yaml logs --no-color --tail=100
+      - name: Destroy ephemeral CI stack
+        if: always()
+        run: docker compose -f compose.yaml down --remove-orphans -v
