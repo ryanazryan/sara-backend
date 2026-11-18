@@ -4,6 +4,8 @@ import { SignJWT, jwtVerify } from "jose";
 
 const scryptAsync = promisify(scrypt);
 const HASH_SCHEME = "scrypt";
+const MAX_USER_ID = 4_294_967_295; // MySQL INT UNSIGNED
+const MAX_JWT_LIFETIME_SECONDS = 7 * 24 * 60 * 60;
 
 function secretBytes(name: "JWT_SECRET" | "OTP_PEPPER"): Uint8Array {
   const secret = process.env[name];
@@ -55,6 +57,9 @@ export function otpMatches(idPengguna: number, code: string, stored: string): bo
 }
 
 export async function issueAccessToken(idPengguna: number): Promise<string> {
+  if (!Number.isSafeInteger(idPengguna) || idPengguna < 1 || idPengguna > MAX_USER_ID) {
+    throw new Error("Invalid user ID for access token");
+  }
   return new SignJWT({})
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setSubject(String(idPengguna))
@@ -65,11 +70,18 @@ export async function issueAccessToken(idPengguna: number): Promise<string> {
 
 export async function verifyAccessToken(token: string): Promise<number | null> {
   try {
-    const { payload } = await jwtVerify(token, secretBytes("JWT_SECRET"), {
+    const { payload, protectedHeader } = await jwtVerify(token, secretBytes("JWT_SECRET"), {
       algorithms: ["HS256"],
+      requiredClaims: ["sub", "iat", "exp"],
     });
+    if (protectedHeader.typ !== "JWT" || typeof payload.sub !== "string" ||
+        !/^[1-9]\d*$/.test(payload.sub) || typeof payload.iat !== "number" ||
+        typeof payload.exp !== "number") return null;
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.iat > now + 60 || payload.exp <= payload.iat ||
+        payload.exp - payload.iat > MAX_JWT_LIFETIME_SECONDS + 60) return null;
     const id = Number(payload.sub);
-    return Number.isSafeInteger(id) && id > 0 ? id : null;
+    return Number.isSafeInteger(id) && id >= 1 && id <= MAX_USER_ID ? id : null;
   } catch {
     return null;
   }
