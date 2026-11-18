@@ -1,0 +1,21 @@
+# Keep secrets, local state, generated files and developer tools out of image context.
+.git
+.github
+.env
+.env.*
+node_modules
+dist
+.yarn
+.pnp.*
+*.log
+*.patch
+*.zip
+*.bak
+coverage
+tests
+scripts
+postman
+docs
+README.md
+**/.DS_Store
+**/Thumbs.db

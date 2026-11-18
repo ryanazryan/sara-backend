@@ -1,0 +1,13 @@
+# Optional for verified FCM delivery; never store service account JSON in this repo.
+# Example: docker compose --env-file .env.docker -f compose.yaml -f compose.fcm.yaml up -d --build
+services:
+  worker:
+    environment:
+      NOTIFICATION_PROVIDER: fcm
+      FCM_SERVICE_ACCOUNT_FILE: /run/secrets/sara_fcm_service_account
+    secrets:
+      - sara_fcm_service_account
+
+secrets:
+  sara_fcm_service_account:
+    file: ${FCM_SERVICE_ACCOUNT_PATH:?Set absolute FCM_SERVICE_ACCOUNT_PATH outside repository}
