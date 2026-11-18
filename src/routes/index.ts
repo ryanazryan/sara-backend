@@ -9,6 +9,7 @@ import reminderRoutes from "./reminder.routes.js";
 import deviceRoutes from "./device.routes.js";
 import notificationRoutes from "./notification.routes.js";
 import nlpRoutes from "./nlp.routes.js";
+import smartRoutes from "./smart.routes.js";
 
 const router = Router();
 
@@ -22,5 +23,6 @@ router.use("/api/reminders", reminderRoutes);
 router.use("/api/devices", deviceRoutes);
 router.use("/api/notifications", notificationRoutes);
 router.use("/api/ai", nlpRoutes);
+router.use("/api/assistant", smartRoutes);
 
 export default router;
