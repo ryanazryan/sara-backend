@@ -1,0 +1,84 @@
+name: SARA Backend Quality Gates
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-and-unit:
+    name: Static checks, contract and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install Yarn 3 dependencies
+        run: |
+          corepack enable
+          yarn install --immutable
+      - name: Typecheck source and test files
+        run: |
+          yarn typecheck
+          yarn tsc -p tests/tsconfig.json --pretty false
+      - name: Build
+        run: yarn build
+      - name: Ensure routes, Postman and OpenAPI match
+        run: yarn qa:contract
+      - name: Unit and auth boundary tests
+        env:
+          NODE_ENV: test
+          JWT_SECRET: sara-ci-jwt-secret-only-8f1df76f2a0cb9c93072987e
+          OTP_PEPPER: sara-ci-otp-pepper-only-c7e1f4f67bd203f17824f7d9
+        run: yarn test:unit
+
+  mysql-integration:
+    name: MySQL migration and end-to-end API regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: sara_ci_only_password
+          MYSQL_DATABASE: sara_migration_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -psara_ci_only_password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      NODE_ENV: test
+      TZ: UTC
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_NAME: sara_migration_test
+      DB_USER: root
+      DB_PASSWORD: sara_ci_only_password
+      JWT_SECRET: sara-ci-jwt-secret-only-8f1df76f2a0cb9c93072987e
+      OTP_PEPPER: sara-ci-otp-pepper-only-c7e1f4f67bd203f17824f7d9
+      NOTIFICATION_PROVIDER: mock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install Yarn 3 dependencies
+        run: |
+          corepack enable
+          yarn install --immutable
+      - name: Initialize isolated test schema
+        run: |
+          yarn db:migrate
+          yarn db:migrate:status
+      - name: Run every integration test sequentially
+        run: yarn test:integration

@@ -1,0 +1,1356 @@
+# SARA Backend OpenAPI 3.0 — route inventory, PR #16
+# Schemas are intentionally non-exhaustive; see module docs and validators.
+openapi: 3.0.3
+info:
+  title: SARA Backend HTTP API
+  version: 1.0.0-qa16
+  description: 'Route-level OpenAPI inventory aligned with code and Postman at PR #15. Field-level validation,
+    lifecycle constraints, and individual error codes are detailed in docs/api and validators; do not treat generic
+    response schemas as exhaustive.'
+servers:
+- url: http://localhost:3000
+  description: Local development (set your own server for deployment)
+security:
+- bearerAuth: []
+tags:
+- name: Health
+- name: Authentication
+- name: Kegiatan
+- name: Aktivitas
+- name: Schedule
+- name: History
+- name: Reminders
+- name: Devices
+- name: Notifications
+- name: NLP
+- name: Assistance
+paths:
+  /api/health:
+    get:
+      tags:
+      - Health
+      summary: Server health check
+      operationId: getApiHealth
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+      security: []
+  /api/auth/register:
+    post:
+      tags:
+      - Authentication
+      summary: Register and request email verification
+      operationId: postApiAuthRegister
+      responses:
+        '201':
+          $ref: '#/components/responses/Created'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRegister'
+  /api/auth/login:
+    post:
+      tags:
+      - Authentication
+      summary: Login and receive JWT
+      operationId: postApiAuthLogin
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLogin'
+  /api/auth/verify-email:
+    post:
+      tags:
+      - Authentication
+      summary: Verify email one-time code
+      operationId: postApiAuthVerifyEmail
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpVerify'
+  /api/auth/resend-otp:
+    post:
+      tags:
+      - Authentication
+      summary: Resend email verification code
+      operationId: postApiAuthResendOtp
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailOnly'
+  /api/auth/me:
+    get:
+      tags:
+      - Authentication
+      summary: Get authenticated profile
+      operationId: getApiAuthMe
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/kegiatan:
+    get:
+      tags:
+      - Kegiatan
+      summary: List owned kegiatan
+      operationId: getApiKegiatan
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    post:
+      tags:
+      - Kegiatan
+      summary: Create kegiatan
+      operationId: postApiKegiatan
+      responses:
+        '201':
+          $ref: '#/components/responses/Created'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KegiatanCreate'
+  /api/kegiatan/{id}:
+    get:
+      tags:
+      - Kegiatan
+      summary: Read kegiatan
+      operationId: getApiKegiatanById
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+    patch:
+      tags:
+      - Kegiatan
+      summary: Update kegiatan
+      operationId: patchApiKegiatanById
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlexibleObject'
+    delete:
+      tags:
+      - Kegiatan
+      summary: Delete kegiatan
+      operationId: deleteApiKegiatanById
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+  /api/aktivitas:
+    get:
+      tags:
+      - Aktivitas
+      summary: List owned activities
+      operationId: getApiAktivitas
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    post:
+      tags:
+      - Aktivitas
+      summary: Create activity
+      operationId: postApiAktivitas
+      responses:
+        '201':
+          $ref: '#/components/responses/Created'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityCreate'
+  /api/aktivitas/{id}:
+    get:
+      tags:
+      - Aktivitas
+      summary: Read activity
+      operationId: getApiAktivitasById
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+    patch:
+      tags:
+      - Aktivitas
+      summary: Update activity and pending reminder offsets
+      operationId: patchApiAktivitasById
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityPatch'
+    delete:
+      tags:
+      - Aktivitas
+      summary: Delete activity
+      operationId: deleteApiAktivitasById
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+  /api/aktivitas/{id}/status:
+    post:
+      tags:
+      - Aktivitas
+      summary: Set activity status
+      operationId: postApiAktivitasByIdStatus
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusUpdate'
+  /api/aktivitas/{id}/history:
+    get:
+      tags:
+      - History
+      summary: Activity audit history
+      operationId: getApiAktivitasByIdHistory
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+  /api/aktivitas/{id}/reminders:
+    get:
+      tags:
+      - Reminders
+      summary: List reminders for activity
+      operationId: getApiAktivitasByIdReminders
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+    post:
+      tags:
+      - Reminders
+      summary: Create reminder
+      operationId: postApiAktivitasByIdReminders
+      responses:
+        '201':
+          $ref: '#/components/responses/Created'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReminderCreate'
+  /api/schedule:
+    get:
+      tags:
+      - Schedule
+      summary: Read calendar in UTC range
+      operationId: getApiSchedule
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+  /api/schedule/conflicts:
+    get:
+      tags:
+      - Schedule
+      summary: Analyze conflicting activities in UTC interval
+      operationId: getApiScheduleConflicts
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: startAt
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+      - name: endAt
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+  /api/history:
+    get:
+      tags:
+      - History
+      summary: List owned activity audit history
+      operationId: getApiHistory
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/reminders:
+    get:
+      tags:
+      - Reminders
+      summary: List owned reminders
+      operationId: getApiReminders
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/reminders/{id}:
+    get:
+      tags:
+      - Reminders
+      summary: Read reminder
+      operationId: getApiRemindersById
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+    patch:
+      tags:
+      - Reminders
+      summary: Update reminder
+      operationId: patchApiRemindersById
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlexibleObject'
+    delete:
+      tags:
+      - Reminders
+      summary: Cancel reminder
+      operationId: deleteApiRemindersById
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+  /api/devices:
+    get:
+      tags:
+      - Devices
+      summary: List registered devices
+      operationId: getApiDevices
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    post:
+      tags:
+      - Devices
+      summary: Register or update device installation
+      operationId: postApiDevices
+      responses:
+        '201':
+          $ref: '#/components/responses/Created'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '200':
+          $ref: '#/components/responses/OK'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceRegister'
+  /api/devices/{id}:
+    patch:
+      tags:
+      - Devices
+      summary: Update device notification permission
+      operationId: patchApiDevicesById
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlexibleObject'
+    delete:
+      tags:
+      - Devices
+      summary: Unregister device
+      operationId: deleteApiDevicesById
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+  /api/notifications:
+    get:
+      tags:
+      - Notifications
+      summary: List notification delivery history
+      operationId: getApiNotifications
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/ai/parse:
+    post:
+      tags:
+      - NLP
+      summary: Parse Indonesian command to interpretation preview
+      operationId: postApiAiParse
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NlpParse'
+  /api/ai/interpretations/{id}:
+    get:
+      tags:
+      - NLP
+      summary: Read owned NLP interpretation
+      operationId: getApiAiInterpretationsById
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+  /api/ai/interpretations/{id}/confirm:
+    post:
+      tags:
+      - NLP
+      summary: Confirm NLP activity creation once
+      operationId: postApiAiInterpretationsByIdConfirm
+      responses:
+        '201':
+          $ref: '#/components/responses/Created'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NlpConfirm'
+  /api/assistant/suggestions:
+    post:
+      tags:
+      - Assistance
+      summary: Generate free-slot suggestions
+      operationId: postApiAssistantSuggestions
+      responses:
+        '201':
+          $ref: '#/components/responses/Created'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SmartSuggestion'
+  /api/assistant/suggestions/{id}:
+    get:
+      tags:
+      - Assistance
+      summary: Read owned suggestion preview
+      operationId: getApiAssistantSuggestionsById
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+  /api/assistant/suggestions/{id}/confirm:
+    post:
+      tags:
+      - Assistance
+      summary: Apply a selected suggestion transactionally
+      operationId: postApiAssistantSuggestionsByIdConfirm
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Owned resource ID (integer or UUID, depending on module)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SmartConfirm'
+  /api/assistant/priorities:
+    get:
+      tags:
+      - Assistance
+      summary: Read heuristic activity priority ranking
+      operationId: getApiAssistantPriorities
+      responses:
+        '200':
+          $ref: '#/components/responses/OK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    FlexibleObject:
+      type: object
+      description: Module-specific patch body. See docs/api and Postman examples; this is a structural OpenAPI
+        contract, not the complete field-level schema.
+      additionalProperties: true
+    AuthRegister:
+      type: object
+      required:
+      - fullName
+      - email
+      - password
+      - confirmPassword
+      properties:
+        fullName:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        confirmPassword:
+          type: string
+          format: password
+    AuthLogin:
+      type: object
+      required:
+      - email
+      - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    EmailOnly:
+      type: object
+      required:
+      - email
+      properties:
+        email:
+          type: string
+          format: email
+    OtpVerify:
+      type: object
+      required:
+      - email
+      - code
+      properties:
+        email:
+          type: string
+          format: email
+        code:
+          type: string
+          pattern: ^[0-9]{6}$
+    KegiatanCreate:
+      type: object
+      required:
+      - namaKegiatan
+      properties:
+        namaKegiatan:
+          type: string
+        deskripsi:
+          type: string
+        estimasiDurasi:
+          type: integer
+    ActivityCreate:
+      type: object
+      required:
+      - namaAktivitas
+      properties:
+        namaAktivitas:
+          type: string
+          maxLength: 200
+        idKegiatan:
+          type: integer
+          nullable: true
+        waktuMulai:
+          type: string
+          format: date-time
+          nullable: true
+        waktuSelesai:
+          type: string
+          format: date-time
+          nullable: true
+        kategori:
+          type: string
+          nullable: true
+        prioritas:
+          type: string
+          nullable: true
+        lokasi:
+          type: string
+          nullable: true
+        status:
+          type: string
+    ActivityPatch:
+      type: object
+      description: Partial ActivityCreate; moving start also shifts PENDING reminders or returns 409 if unsafe.
+      properties:
+        namaAktivitas:
+          type: string
+        idKegiatan:
+          type: integer
+          nullable: true
+        waktuMulai:
+          type: string
+          format: date-time
+          nullable: true
+        waktuSelesai:
+          type: string
+          format: date-time
+          nullable: true
+        kategori:
+          type: string
+          nullable: true
+        prioritas:
+          type: string
+          nullable: true
+        lokasi:
+          type: string
+          nullable: true
+        status:
+          type: string
+    StatusUpdate:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+    ReminderCreate:
+      type: object
+      required:
+      - triggerAt
+      properties:
+        triggerAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+    DeviceRegister:
+      type: object
+      required:
+      - installationId
+      - platform
+      properties:
+        installationId:
+          type: string
+        platform:
+          type: string
+        notificationPermission:
+          type: string
+        fcmToken:
+          type: string
+    NlpParse:
+      type: object
+      required:
+      - text
+      - timeZone
+      properties:
+        text:
+          type: string
+        timeZone:
+          type: string
+          example: Asia/Makassar
+        locale:
+          type: string
+          example: id-ID
+    NlpConfirm:
+      type: object
+      description: Optional validated overrides; empty object is valid.
+      properties:
+        overrides:
+          type: object
+          additionalProperties: true
+    SmartSuggestion:
+      type: object
+      required:
+      - activityId
+      - windowStart
+      - windowEnd
+      properties:
+        activityId:
+          type: integer
+        windowStart:
+          type: string
+          format: date-time
+        windowEnd:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+          minimum: 15
+          maximum: 480
+        bufferMinutes:
+          type: integer
+          minimum: 0
+          maximum: 120
+        maxSuggestions:
+          type: integer
+    SmartConfirm:
+      type: object
+      required:
+      - slotIndex
+      properties:
+        slotIndex:
+          type: integer
+          minimum: 0
+    ApiEnvelope:
+      type: object
+      required:
+      - success
+      properties:
+        success:
+          type: boolean
+        data:
+          description: Module-specific response payload
+        message:
+          type: string
+        code:
+          type: string
+  responses:
+    OK:
+      description: Successful response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiEnvelope'
+    Created:
+      description: Resource created
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiEnvelope'
+    NoContent:
+      description: No response body
+    BadRequest:
+      description: Malformed request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiEnvelope'
+    Unauthorized:
+      description: Missing/invalid JWT
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiEnvelope'
+    NotFound:
+      description: Owned resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiEnvelope'
+    Conflict:
+      description: State or schedule conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiEnvelope'
+    Unprocessable:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiEnvelope'
+    ServerError:
+      description: Internal error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiEnvelope'
