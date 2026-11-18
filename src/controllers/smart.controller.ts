@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Request, Response } from "express";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import pool from "../config/database.js";
+import { shiftActiveReminders, ScheduleConsistencyConflict } from "../services/schedule-consistency.service.js";
 import {
   parsePriorityQuery, parseSmartConfirmation, parseSuggestionRequest, validSmartId,
 } from "../validators/smart.validators.js";
@@ -180,13 +181,6 @@ export async function confirmSmartSuggestion(req: Request, res: Response): Promi
     if (snapshotFingerprint(targets[0]) !== row.originalFingerprint) {
       await connection.rollback(); res.status(409).json({ success: false, code: "ACTIVITY_CHANGED", message: "Activity changed since analysis; refresh suggestions" }); return;
     }
-    const [reminders] = await connection.execute<CountRow[]>(
-      `SELECT 1 AS found FROM activity_reminders
-       WHERE idAktivitas = ? AND status IN ('PENDING', 'DUE') LIMIT 1 FOR UPDATE`, [row.idAktivitas],
-    );
-    if (reminders.length) {
-      await connection.rollback(); res.status(409).json({ success: false, code: "REMINDERS_REQUIRE_REVIEW", message: "Cancel or reschedule active reminders manually before applying" }); return;
-    }
     const context = json<Record<string, unknown>>(row.contextJson);
     const configuredGap = (context.window as { bufferMinutes?: unknown } | undefined)?.bufferMinutes;
     if (typeof configuredGap !== "number" || !Number.isSafeInteger(configuredGap) ||
@@ -209,6 +203,14 @@ export async function confirmSmartSuggestion(req: Request, res: Response): Promi
     if (conflicts.length) {
       await connection.rollback(); res.status(409).json({ success: false, code: "SLOT_CONFLICT", message: "Schedule changed; requested slot is no longer free" }); return;
     }
+    let shiftedReminders = 0;
+    try {
+      shiftedReminders = await shiftActiveReminders(connection, row.idAktivitas, targets[0].waktuMulai, slot.startAt);
+    } catch (error) {
+      if (!(error instanceof ScheduleConsistencyConflict)) throw error;
+      await connection.rollback();
+      res.status(409).json({ success: false, code: error.code, message: error.message }); return;
+    }
     await connection.execute<ResultSetHeader>(
       `UPDATE Aktivitas SET waktuMulai = ?, waktuSelesai = ?
        WHERE idAktivitas = ? AND idPengguna = ?`,
@@ -216,7 +218,7 @@ export async function confirmSmartSuggestion(req: Request, res: Response): Promi
     );
     // Existing Activity update trigger records the modification in history.
     const result = { activityId: row.idAktivitas, startAt: slot.startAt, endAt: slot.endAt,
-      remindersUpdated: false, historyRecorded: true };
+      remindersUpdated: shiftedReminders > 0, shiftedReminders, historyRecorded: true };
     await connection.execute<ResultSetHeader>(
       `UPDATE smart_assistance_suggestions SET state = 'APPLIED', selectedIndex = ?,
        resultJson = ?, appliedAt = UTC_TIMESTAMP(6) WHERE idSuggestion = ? AND idPengguna = ?`,
