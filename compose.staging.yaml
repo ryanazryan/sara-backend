@@ -1,0 +1,31 @@
+# Staging VPS HTTPS overlay. Requires a DNS name pointing to the VPS.
+# Run with: docker compose --env-file .env.docker -f compose.yaml -f compose.staging.yaml up -d --wait api reverse-proxy
+services:
+  api:
+    # Caddy is the single trusted proxy hop for IP-based rate limiting.
+    environment:
+      TRUST_PROXY_HOPS: "1"
+  reverse-proxy:
+    image: caddy:2.10
+    environment:
+      SARA_API_DOMAIN: ${SARA_API_DOMAIN:?Set SARA_API_DOMAIN to a real DNS hostname}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  caddy_data:
+  caddy_config:

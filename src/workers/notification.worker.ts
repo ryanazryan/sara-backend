@@ -1,5 +1,6 @@
 import "dotenv/config";
 import pool from "../config/database.js";
+import { writeLog } from "../utils/structured-logger.js";
 import { dispatchNotifications } from "../services/notification.service.js";
 
 const mode = process.argv[2] ?? "once";
@@ -15,13 +16,15 @@ async function main(): Promise<void> {
   try {
     do {
       const summary = await dispatchNotifications();
-      console.log("Notification worker summary:", JSON.stringify(summary));
+      writeLog("info", "worker.notification_tick", { ...summary });
       if (mode === "once" || !running) break;
       await new Promise<void>((resolve) => setTimeout(resolve, pollMs));
     } while (running);
   } finally { await pool.end(); }
 }
 main().catch((error: unknown) => {
-  console.error("Notification worker failed:", error instanceof Error ? error.message : "Unknown error");
+  writeLog("error", "worker.notification_failed", {
+    errorType: error instanceof Error ? error.name : "UnknownError",
+  });
   process.exitCode = 1;
 });

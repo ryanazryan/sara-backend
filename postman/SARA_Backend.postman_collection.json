@@ -74,6 +74,17 @@
               }
             }
           ]
+        },
+        {
+          "name": "Readiness (database)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/ready",
+            "description": "Public readiness check; returns 200 when MySQL is available, 503 otherwise.",
+            "auth": { "type": "noauth" }
+          },
+          "response": []
         }
       ]
     },

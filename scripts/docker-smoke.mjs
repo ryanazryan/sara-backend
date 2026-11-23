@@ -16,11 +16,13 @@ async function request(path) {
 try {
   const live = await request("/api/health");
   if (live.status !== 200 || live.payload?.success !== true) throw new Error(`health: ${live.status}`);
+  const ready = await request("/api/ready");
+  if (ready.status !== 200 || ready.payload?.status !== "ready") throw new Error(`readiness: ${ready.status}`);
   const protectedRoute = await request("/api/auth/me");
   if (protectedRoute.status !== 401 || protectedRoute.payload?.success !== false) {
     throw new Error(`auth boundary: expected 401, received ${protectedRoute.status}`);
   }
-  console.log("PASS Docker smoke: /api/health 200; /api/auth/me 401 without JWT");
+  console.log("PASS Docker smoke: /api/health 200; /api/ready 200; /api/auth/me 401 without JWT");
 } catch (error) {
   console.error("FAIL Docker smoke:", error instanceof Error ? error.message : error);
   process.exitCode = 1;
