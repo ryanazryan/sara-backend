@@ -2,11 +2,11 @@ import { createHash, randomUUID } from "node:crypto";
 import type { Request, Response } from "express";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import pool from "../config/database.js";
-import { lockScheduleOwner } from "../services/schedule-consistency.service.js";
-import { interpretIndonesian, type Draft } from "../services/nlp.service.js";
+import { Interpretation, interpretIndonesian, interpretIndonesianWithLLM, NlpProviderError, type Draft } from "../services/nlp.service.js";
 import {
   parseNlpRequest, parseConfirmRequest, validInterpretationId,
 } from "../validators/nlp.validators.js";
+import { lockScheduleOwner } from "../services/schedule-consistency.service.js";
 
 type InterpretationRow = RowDataPacket & {
   idInterpretation: string;
@@ -32,6 +32,14 @@ type ActivityRow = RowDataPacket & {
   lokasi: string | null;
   status: string;
 };
+type ConflictRow = RowDataPacket & {
+  idAktivitas: number;
+  namaAktivitas: string;
+  waktuMulai: string;
+  waktuSelesai: string | null;
+  status: string;
+};
+
 type OwnedRow = RowDataPacket & { found: number };
 const owner = (res: Response): number => res.locals.authUserId as number;
 const toSql = (value: string): string => value.replace("T", " ").replace("Z", "").slice(0, 19);
@@ -45,6 +53,36 @@ const activityColumns = `idAktivitas, idKegiatan, namaAktivitas,
   DATE_FORMAT(waktuMulai, '%Y-%m-%dT%H:%i:%sZ') AS waktuMulai,
   DATE_FORMAT(waktuSelesai, '%Y-%m-%dT%H:%i:%sZ') AS waktuSelesai,
   kategori, prioritas, lokasi, status`;
+
+  async function findConflictingActivities(
+    idPengguna: number,
+    waktuMulaiIso: string,
+  ): Promise<Array<{
+    idAktivitas: number;
+    namaAktivitas: string;
+    waktuMulai: string;
+    waktuSelesai: string | null;
+    status: string;
+  }>> {
+    const targetSql = toSql(waktuMulaiIso);
+    const [rows] = await pool.execute<ConflictRow[]>(
+      `SELECT idAktivitas, namaAktivitas,
+              DATE_FORMAT(waktuMulai, '%Y-%m-%dT%H:%i:%sZ') AS waktuMulai,
+              DATE_FORMAT(waktuSelesai, '%Y-%m-%dT%H:%i:%sZ') AS waktuSelesai,
+              status
+       FROM Aktivitas
+       WHERE idPengguna = ?
+         AND status <> 'CANCELLED'
+         AND waktuMulai IS NOT NULL
+         AND (
+           (waktuSelesai IS NOT NULL AND waktuMulai <= ? AND waktuSelesai > ?)
+           OR
+           (waktuSelesai IS NULL AND waktuMulai = ?)
+         )`,
+      [idPengguna, targetSql, targetSql, targetSql],
+    );
+    return rows;
+  }
 
 function exposed(row: InterpretationRow): Record<string, unknown> {
   const state = row.state !== "CONFIRMED" && Date.parse(row.expiresAt) <= Date.now() ? "EXPIRED" : row.state;
@@ -69,12 +107,40 @@ export async function parseNaturalLanguage(req: Request, res: Response): Promise
     return;
   }
   const now = new Date();
-  const data = interpretIndonesian(checked.data.text, checked.data.timeZone, now);
+  let data: Interpretation | null;
+  try {
+    data = await interpretIndonesianWithLLM(checked.data.text, checked.data.timeZone, now);
+  } catch (error) {
+    if (error instanceof NlpProviderError) {
+      res.status(503).json({
+        success: false,
+        code: "NLP_UNAVAILABLE",
+        message: "AI parser service is temporarily unavailable.",
+      });
+      return;
+    }
+    throw error;
+  }
   if (!data) {
-    res.status(422).json({ success: false, code: "INTENT_UNSUPPORTED",
-      message: "Unsupported command. Try 'buat aktivitas ...' or 'ingatkan saya ...'." });
+    res.status(422).json({
+      success: false,
+      code: "INTENT_UNSUPPORTED",
+      message: "Unsupported command. Try 'buat aktivitas ...' or 'ingatkan saya ...'.",
+    });
     return;
   }
+  const conflicts =
+    data.state === "READY" && data.structuredDraft.waktuMulai
+      ? await findConflictingActivities(owner(res), data.structuredDraft.waktuMulai)
+      : [];
+
+  const previewIssues =
+    conflicts.length > 0
+      ? [
+          ...data.issues,
+          `Jadwal berpotensi bentrok dengan ${conflicts.length} aktivitas lain (${conflicts.map((c) => c.namaAktivitas).join(", ")}).`,
+        ]
+      : data.issues;
   const id = randomUUID();
   const expires = new Date(now.getTime() + 15 * 60 * 1000);
   await pool.execute<ResultSetHeader>(
@@ -83,14 +149,25 @@ export async function parseNaturalLanguage(req: Request, res: Response): Promise
       timeZone, referenceAt, expiresAt)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [id, owner(res), data.intent, data.state, JSON.stringify(data.structuredDraft),
-      JSON.stringify(data.missingFields), JSON.stringify(data.issues),
+      JSON.stringify(data.missingFields), JSON.stringify(previewIssues),
       checked.data.timeZone, toSql(now.toISOString()), toSql(expires.toISOString())],
   );
-  res.status(200).json({ success: true, data: {
-    id, intent: data.intent, state: data.state, structuredDraft: data.structuredDraft,
-    missingFields: data.missingFields, issues: data.issues, referenceAt: data.referenceAt,
-    timeZone: data.timeZone, expiresAt: expires.toISOString(),
-  } });
+  
+  res.status(200).json({
+    success: true,
+    data: {
+      id,
+      intent: data.intent,
+      state: data.state,
+      structuredDraft: data.structuredDraft,
+      missingFields: data.missingFields,
+      issues: previewIssues,
+      conflicts,
+      referenceAt: data.referenceAt,
+      timeZone: data.timeZone,
+      expiresAt: expires.toISOString(),
+    },
+  });
 }
 
 async function findOwned(id: string, idPengguna: number): Promise<InterpretationRow | null> {

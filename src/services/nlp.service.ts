@@ -142,3 +142,158 @@ export function interpretIndonesian(text: string, timeZone: string, referenceAt:
     referenceAt: referenceAt.toISOString(), timeZone,
   };
 }
+
+export class NlpProviderError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NlpProviderError";
+  }
+}
+
+type LlmRawOutput = {
+  isValidActivityIntent: boolean;
+  namaAktivitas: string | null;
+  tanggal: string | null; 
+  jam: string | null;    
+  reminderRequested: boolean;
+  missingFields: string[];
+  issues: string[];
+};
+
+//LLM
+export async function interpretIndonesianWithLLM(
+  text: string,
+  timeZone: string,
+  referenceAt: Date = new Date()
+): Promise<Interpretation | null> {
+  const apiKey = process.env.LLM_API_KEY;
+  const baseUrl = process.env.LLM_BASE_URL || "https://generativelanguage.googleapis.com/v1beta/openai";
+  const model = process.env.LLM_MODEL || "gemini-2.5-flash";
+
+  // Jika API key belum diset di .env, fallback ke parser rule-based lama
+  if (!apiKey) {
+    return interpretIndonesian(text, timeZone, referenceAt);
+  }
+
+  const localNow = zoneParts(referenceAt, timeZone);
+  const currentLocalDateStr = `${localNow.year}-${String(localNow.month).padStart(2, "0")}-${String(localNow.day).padStart(2, "0")}`;
+  const currentLocalTimeStr = `${String(localNow.hour).padStart(2, "0")}:${String(localNow.minute).padStart(2, "0")}`;
+  const dayNames = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+  const localDayName = dayNames[new Date(Date.UTC(localNow.year, localNow.month - 1, localNow.day)).getUTCDay()];
+
+  const systemPrompt = `Kamu adalah Natural Language Parser untuk aplikasi penjadwalan berbahasa Indonesia bernama SARA.
+Waktu lokal pengguna saat ini: ${localDayName}, ${currentLocalDateStr} pukul ${currentLocalTimeStr} (${timeZone}).
+
+Tugasmu: Ekstrak maksud kalimat pengguna menjadi JSON murni tanpa markdown atau teks tambahan.
+
+Aturan ketat:
+1. Jika kalimat pengguna bukan perintah membuat jadwal/aktivitas/pengingat (misalnya sapaan kosong atau obrolan tidak relevan), set "isValidActivityIntent": false.
+2. Bersihkan kata perintah di awal (seperti "tolong ingatkan saya untuk", "buatkan jadwal", "catat") sehingga "namaAktivitas" hanya berisi inti kegiatannya (maksimal 200 karakter).
+3. Konversi kata waktu relatif ("hari ini", "besok", "lusa", "senin depan", "akhir pekan", dll) ke tanggal lokal "YYYY-MM-DD" berdasarkan waktu saat ini di atas. Jika pengguna menyebut waktu tanpa tanggal yang pasti atau ambigu, isi "tanggal": null dan masukkan "tanggal" ke "missingFields".
+4. Konversi jam ke format 24-jam "HH:mm" (misal "jam 8 malam" -> "20:00", "jam 2 siang" -> "14:00"). Jika user hanya menyebut "jam 8" tanpa keterangan pagi/malam sehingga ambigu, isi "jam": null dan masukkan "waktuMulai" ke "missingFields".
+5. Set "reminderRequested": true hanya jika user secara eksplisit meminta diingatkan (mengandung kata "ingatkan", "reminder", "alarm", dsb).
+6. Isi "issues" dengan penjelasan singkat bahasa Indonesia jika ada field yang kurang/ambigu.
+
+Format JSON wajib:
+{
+  "isValidActivityIntent": boolean,
+  "namaAktivitas": string | null,
+  "tanggal": "YYYY-MM-DD" | null,
+  "jam": "HH:mm" | null,
+  "reminderRequested": boolean,
+  "missingFields": string[],
+  "issues": string[]
+}`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10_000); // timeout 10 detik
+
+  try {
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.1,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: text.trim() },
+        ],
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new NlpProviderError(`LLM provider error: HTTP ${response.status}`);
+    }
+
+    const data = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+    const rawContent = data.choices?.[0]?.message?.content;
+    if (!rawContent) {
+      throw new NlpProviderError("Empty response from LLM provider");
+    }
+
+    const parsed = JSON.parse(rawContent) as LlmRawOutput;
+    if (!parsed.isValidActivityIntent) return null;
+
+    const missingFields = new Set<string>(parsed.missingFields || []);
+    const issues: string[] = [...(parsed.issues || [])];
+    let waktuMulai: string | null = null;
+
+    const namaAktivitas = (parsed.namaAktivitas || "").trim();
+    if (!namaAktivitas || namaAktivitas.length > 200) {
+      missingFields.add("namaAktivitas");
+      if (!issues.length) issues.push("Nama aktivitas harus diisi dan maksimal 200 karakter.");
+    }
+
+    if (parsed.tanggal && parsed.jam) {
+      const [y, m, d] = parsed.tanggal.split("-").map(Number);
+      const [hr, min] = parsed.jam.split(":").map(Number);
+      waktuMulai = localToUtc({ year: y, month: m, day: d, hour: hr, minute: min }, timeZone);
+
+      if (!waktuMulai) {
+        missingFields.add("waktuMulai");
+        issues.push("Tanggal/waktu tidak valid atau ambigu pada zona waktu tersebut.");
+      } else if (Date.parse(waktuMulai) <= referenceAt.getTime()) {
+        missingFields.add("waktuMulai");
+        issues.push("Jadwal tidak boleh berada pada waktu yang sudah berlalu.");
+        waktuMulai = null;
+      }
+    } else {
+      if (!parsed.tanggal && parsed.jam) missingFields.add("tanggal");
+      if (parsed.tanggal && !parsed.jam) missingFields.add("waktuMulai");
+    }
+
+    if (parsed.reminderRequested && !waktuMulai) {
+      missingFields.add("waktuMulai");
+      issues.push("Perintah pengingat membutuhkan tanggal dan waktu yang pasti.");
+    }
+
+    const finalMissing = [...missingFields];
+    return {
+      intent: "CREATE_ACTIVITY",
+      state: finalMissing.length > 0 ? "NEEDS_CLARIFICATION" : "READY",
+      structuredDraft: {
+        namaAktivitas,
+        waktuMulai,
+        reminderTriggerAt: parsed.reminderRequested ? waktuMulai : null,
+        idKegiatan: null,
+      },
+      missingFields: finalMissing,
+      issues,
+      referenceAt: referenceAt.toISOString(),
+      timeZone,
+    };
+  } catch (err) {
+    if (err instanceof NlpProviderError) throw err;
+    throw new NlpProviderError(err instanceof Error ? err.message : "Failed to reach LLM provider");
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
