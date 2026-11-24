@@ -1,5 +1,6 @@
 import "dotenv/config";
 import pool from "../config/database.js";
+import { writeLog } from "../utils/structured-logger.js";
 import { processDueReminders } from "../services/reminder.service.js";
 
 const mode = process.argv[2] ?? "once";
@@ -16,7 +17,7 @@ async function run(): Promise<void> {
   try {
     do {
       const result = await processDueReminders();
-      console.log(`Reminder scheduler: ${result.due} due; ${result.expired} expired`);
+      writeLog("info", "worker.reminder_tick", { due: result.due, expired: result.expired });
       if (mode === "once" || !running) break;
       await new Promise<void>((resolve) => setTimeout(resolve, pollMs));
     } while (running);
@@ -25,6 +26,8 @@ async function run(): Promise<void> {
   }
 }
 run().catch((error: unknown) => {
-  console.error("Reminder scheduler failed", error);
+  writeLog("error", "worker.reminder_failed", {
+    errorType: error instanceof Error ? error.name : "UnknownError",
+  });
   process.exitCode = 1;
 });

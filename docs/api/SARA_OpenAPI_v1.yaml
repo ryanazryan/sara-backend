@@ -41,6 +41,18 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
       security: []
+  /api/ready:
+    get:
+      tags:
+      - Health
+      summary: Readiness check with MySQL connectivity
+      operationId: getApiReady
+      responses:
+        '200':
+          description: MySQL is reachable
+        '503':
+          description: MySQL is temporarily unavailable
+      security: []
   /api/auth/register:
     post:
       tags:

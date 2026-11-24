@@ -1,0 +1,6 @@
+# Caddy obtains and renews HTTPS certificates automatically when DNS is valid
+# and inbound TCP 80/443 can reach the VPS.
+{$SARA_API_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy api:3000
+}

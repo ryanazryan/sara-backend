@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler } from "express";
+import { writeLog } from "../utils/structured-logger.js";
 
 type BodyParserError = { type?: unknown };
 
@@ -18,7 +19,9 @@ export const errorHandler: ErrorRequestHandler = (err: unknown, _req, res, next)
     res.status(415).json({ success: false, message: "Unsupported request encoding", requestId });
     return;
   }
-  // No raw error object/stack/message in logs: DB and HTTP errors can include secrets.
-  console.error("SARA unhandled request error", { requestId, type: err instanceof Error ? err.name : "UnknownError" });
+  // Never log raw error details: MySQL/HTTP errors may include private data.
+  writeLog("error", "http.unhandled_error", {
+    requestId, errorType: err instanceof Error ? err.name : "UnknownError",
+  });
   res.status(500).json({ success: false, message: "Internal Server Error", requestId });
 };
