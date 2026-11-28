@@ -65,7 +65,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    environment: *backend-env
+    environment:
+      <<: *backend-env
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}
+      LLM_MODEL: ${LLM_MODEL:-gemini-2.5-flash}
     depends_on:
       migrate:
         condition: service_completed_successfully
